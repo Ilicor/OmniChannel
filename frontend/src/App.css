@@ -10,7 +10,7 @@
 }
 
 .App-header {
-    background-color: #0f0f10;
+    background-color: #393d8a;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -21,7 +21,7 @@
 }
 
 .App-link {
-    color: #61dafb;
+    color: #eeb224;
 }
 
 @keyframes App-logo-spin {
@@ -111,25 +111,25 @@ button, a, input, select, textarea {
 
 /* Focus styles */
 *:focus-visible {
-    outline: 2px solid #5C0F8B;
+    outline: 2px solid #393d8a;
     outline-offset: 2px;
 }
 
 /* Custom checkbox styling */
 input[type="checkbox"]:checked {
-    background-color: #5C0F8B;
-    border-color: #5C0F8B;
+    background-color: #393d8a;
+    border-color: #393d8a;
 }
 
 /* Selection color */
 ::selection {
-    background-color: #5C0F8B;
+    background-color: #393d8a;
     color: white;
 }
 
 /* Post Aruba theme variables */
 :root {
-    --post-aruba-orange: #FF8800;
-    --post-aruba-purple: #5C0F8B;
-    --post-aruba-blue: #0F3252;
+    --post-aruba-blue: #393d8a;
+    --post-aruba-yellow: #eeb224;
+    --post-aruba-green: #30a34b;
 }
