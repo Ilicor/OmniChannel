@@ -11,7 +11,7 @@ import time
 from typing import Dict, Any, Optional
 
 # Base URL from the review request
-BASE_URL = "https://fresh-support.preview.emergentagent.com/api"
+BASE_URL = "https://helpdesk-hub-41.preview.emergentagent.com/api"
 
 class PostArubaAPITester:
     def __init__(self):
