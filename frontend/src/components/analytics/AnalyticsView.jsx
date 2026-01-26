@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  TrendingUp, TrendingDown, Users, Clock, ThumbsUp,
+  TrendingUp, Users, Clock, ThumbsUp,
   Mail, MessageCircle, Facebook, MessageSquare,
-  ArrowUpRight, ArrowDownRight
+  ArrowUpRight, ArrowDownRight, Loader2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { getAnalytics } from '../../services/api';
 
 const channelIcons = {
   Email: Mail,
@@ -20,43 +21,77 @@ const channelColors = {
   'Live Chat': 'bg-orange-500'
 };
 
-const AnalyticsView = ({ statistics }) => {
+const AnalyticsView = () => {
+  const [statistics, setStatistics] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, []);
+
+  const loadAnalytics = async () => {
+    try {
+      const data = await getAnalytics();
+      setStatistics(data);
+    } catch (error) {
+      console.error('Failed to load analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#393d8a]" />
+      </div>
+    );
+  }
+
+  if (!statistics) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-gray-500">Failed to load analytics</p>
+      </div>
+    );
+  }
+
   const statCards = [
     {
       title: 'Total Tickets',
-      value: statistics.totalTickets.toLocaleString(),
+      value: statistics.total_tickets?.toLocaleString() || '0',
       change: '+12%',
       trend: 'up',
       icon: Users,
-      color: 'bg-[#5C0F8B]'
+      color: 'bg-[#393d8a]'
     },
     {
       title: 'Open Tickets',
-      value: statistics.openTickets,
+      value: statistics.open_tickets || 0,
       change: '-5%',
       trend: 'down',
       icon: Mail,
-      color: 'bg-[#FF8800]'
+      color: 'bg-[#eeb224]'
     },
     {
       title: 'Resolved Today',
-      value: statistics.resolvedToday,
+      value: statistics.resolved_today || 0,
       change: '+8%',
       trend: 'up',
       icon: ThumbsUp,
-      color: 'bg-green-600'
+      color: 'bg-[#30a34b]'
     },
     {
       title: 'Avg Response Time',
-      value: statistics.avgResponseTime,
+      value: statistics.avg_response_time || '0 min',
       change: '-15%',
       trend: 'down',
       icon: Clock,
-      color: 'bg-[#0F3252]'
+      color: 'bg-[#393d8a]'
     }
   ];
 
-  const maxTickets = Math.max(...statistics.weeklyTrend.map(d => d.tickets));
+  const maxTickets = Math.max(...(statistics.weekly_trend || []).map(d => d.tickets), 1);
 
   return (
     <div className="flex-1 bg-gray-50 p-6 overflow-y-auto">
@@ -107,11 +142,11 @@ const AnalyticsView = ({ statistics }) => {
           <div className="col-span-2 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-semibold text-gray-900 mb-6">Weekly Ticket Trend</h3>
             <div className="flex items-end justify-between h-48 gap-4">
-              {statistics.weeklyTrend.map((day, index) => (
+              {(statistics.weekly_trend || []).map((day, index) => (
                 <div key={index} className="flex-1 flex flex-col items-center gap-2">
                   <div 
-                    className="w-full bg-gradient-to-t from-[#5C0F8B] to-[#FF8800] rounded-t-lg transition-all duration-500 hover:opacity-80"
-                    style={{ height: `${(day.tickets / maxTickets) * 100}%` }}
+                    className="w-full bg-gradient-to-t from-[#393d8a] to-[#30a34b] rounded-t-lg transition-all duration-500 hover:opacity-80"
+                    style={{ height: `${(day.tickets / maxTickets) * 100}%`, minHeight: '8px' }}
                   />
                   <span className="text-xs text-gray-500 font-medium">{day.day}</span>
                   <span className="text-xs font-semibold text-gray-700">{day.tickets}</span>
@@ -124,7 +159,7 @@ const AnalyticsView = ({ statistics }) => {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <h3 className="font-semibold text-gray-900 mb-6">Tickets by Channel</h3>
             <div className="space-y-4">
-              {statistics.ticketsByChannel.map((channel, index) => {
+              {(statistics.tickets_by_channel || []).map((channel, index) => {
                 const Icon = channelIcons[channel.channel] || Mail;
                 return (
                   <div key={index}>
@@ -162,7 +197,7 @@ const AnalyticsView = ({ statistics }) => {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-center">
-                <p className="text-5xl font-bold text-[#5C0F8B]">{statistics.customerSatisfaction}%</p>
+                <p className="text-5xl font-bold text-[#393d8a]">{statistics.customer_satisfaction || 0}%</p>
                 <p className="text-sm text-gray-500 mt-1">CSAT Score</p>
               </div>
               <div className="w-32 h-32 relative">
@@ -183,17 +218,17 @@ const AnalyticsView = ({ statistics }) => {
                     stroke="url(#gradient)"
                     strokeWidth="12"
                     strokeLinecap="round"
-                    strokeDasharray={`${statistics.customerSatisfaction * 3.52} 352`}
+                    strokeDasharray={`${(statistics.customer_satisfaction || 0) * 3.52} 352`}
                   />
                   <defs>
                     <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#5C0F8B" />
-                      <stop offset="100%" stopColor="#FF8800" />
+                      <stop offset="0%" stopColor="#393d8a" />
+                      <stop offset="100%" stopColor="#30a34b" />
                     </linearGradient>
                   </defs>
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <ThumbsUp className="w-8 h-8 text-[#5C0F8B]" />
+                  <ThumbsUp className="w-8 h-8 text-[#393d8a]" />
                 </div>
               </div>
             </div>

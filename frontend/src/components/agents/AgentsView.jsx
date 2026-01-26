@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { Search, Plus, MoreVertical, Filter, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, MoreVertical, Filter, Users, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ScrollArea } from '../ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { getUsers, createUser, updateUserStatus, deleteUser } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const statusColors = {
   online: 'bg-green-500',
@@ -34,12 +35,30 @@ const statusColors = {
   offline: 'bg-gray-400'
 };
 
-const AgentsView = ({ agents: initialAgents }) => {
-  const [agents, setAgents] = useState(initialAgents);
+const AgentsView = () => {
+  const { user: currentUser } = useAuth();
+  const [agents, setAgents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newAgent, setNewAgent] = useState({ name: '', email: '', role: 'Agent' });
+  const [newAgent, setNewAgent] = useState({ name: '', email: '', password: '', role: 'agent' });
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    loadAgents();
+  }, []);
+
+  const loadAgents = async () => {
+    try {
+      const data = await getUsers();
+      setAgents(data);
+    } catch (error) {
+      console.error('Failed to load agents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredAgents = agents.filter(agent => {
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -48,27 +67,55 @@ const AgentsView = ({ agents: initialAgents }) => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleAddAgent = () => {
-    if (!newAgent.name || !newAgent.email) return;
+  const handleAddAgent = async () => {
+    if (!newAgent.name || !newAgent.email || !newAgent.password) return;
     
-    const agent = {
-      id: `agent${agents.length + 1}`,
-      ...newAgent,
-      avatar: newAgent.name.split(' ').map(n => n[0]).join('').toUpperCase(),
-      status: 'offline',
-      assignedTickets: 0
-    };
-    
-    setAgents([...agents, agent]);
-    setNewAgent({ name: '', email: '', role: 'Agent' });
-    setIsAddDialogOpen(false);
+    setCreating(true);
+    try {
+      await createUser(newAgent);
+      await loadAgents();
+      setNewAgent({ name: '', email: '', password: '', role: 'agent' });
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to create agent:', error);
+      alert(error.response?.data?.detail || 'Failed to create agent');
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const handleStatusChange = (agentId, newStatus) => {
-    setAgents(agents.map(a => 
-      a.id === agentId ? { ...a, status: newStatus } : a
-    ));
+  const handleStatusChange = async (agentId, newStatus) => {
+    try {
+      await updateUserStatus(agentId, newStatus);
+      await loadAgents();
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
   };
+
+  const handleDeleteAgent = async (agentId) => {
+    if (!window.confirm('Are you sure you want to remove this agent?')) return;
+    
+    try {
+      await deleteUser(agentId);
+      await loadAgents();
+    } catch (error) {
+      console.error('Failed to delete agent:', error);
+      alert(error.response?.data?.detail || 'Failed to delete agent');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#393d8a]" />
+      </div>
+    );
+  }
+
+  const onlineCount = agents.filter(a => a.status === 'online').length;
+  const awayCount = agents.filter(a => a.status === 'away').length;
+  const totalTickets = agents.reduce((sum, a) => sum + (a.assigned_tickets || 0), 0);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -81,7 +128,7 @@ const AgentsView = ({ agents: initialAgents }) => {
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 bg-[#FF8800] hover:bg-[#FF8800]/90">
+              <Button className="gap-2 bg-[#eeb224] hover:bg-[#eeb224]/90 text-white">
                 <Plus className="w-4 h-4" />
                 Add Agent
               </Button>
@@ -114,6 +161,16 @@ const AgentsView = ({ agents: initialAgents }) => {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Create a password"
+                    value={newAgent.password}
+                    onChange={(e) => setNewAgent({ ...newAgent, password: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
                   <Select
                     value={newAgent.role}
@@ -123,10 +180,8 @@ const AgentsView = ({ agents: initialAgents }) => {
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Agent">Agent</SelectItem>
-                      <SelectItem value="Senior Agent">Senior Agent</SelectItem>
-                      <SelectItem value="Team Lead">Team Lead</SelectItem>
-                      <SelectItem value="Supervisor">Supervisor</SelectItem>
+                      <SelectItem value="agent">Agent</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -135,7 +190,12 @@ const AgentsView = ({ agents: initialAgents }) => {
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddAgent} className="bg-[#5C0F8B] hover:bg-[#5C0F8B]/90">
+                <Button 
+                  onClick={handleAddAgent} 
+                  className="bg-[#393d8a] hover:bg-[#393d8a]/90"
+                  disabled={creating}
+                >
+                  {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   Add Agent
                 </Button>
               </DialogFooter>
@@ -151,8 +211,8 @@ const AgentsView = ({ agents: initialAgents }) => {
                 <p className="text-sm text-gray-500">Total Agents</p>
                 <p className="text-2xl font-bold text-gray-900">{agents.length}</p>
               </div>
-              <div className="w-12 h-12 bg-[#5C0F8B]/10 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-[#5C0F8B]" />
+              <div className="w-12 h-12 bg-[#393d8a]/10 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-[#393d8a]" />
               </div>
             </div>
           </div>
@@ -160,12 +220,10 @@ const AgentsView = ({ agents: initialAgents }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Online Now</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {agents.filter(a => a.status === 'online').length}
-                </p>
+                <p className="text-2xl font-bold text-[#30a34b]">{onlineCount}</p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+              <div className="w-12 h-12 bg-[#30a34b]/10 rounded-xl flex items-center justify-center">
+                <div className="w-3 h-3 bg-[#30a34b] rounded-full animate-pulse" />
               </div>
             </div>
           </div>
@@ -173,12 +231,10 @@ const AgentsView = ({ agents: initialAgents }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Away</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {agents.filter(a => a.status === 'away').length}
-                </p>
+                <p className="text-2xl font-bold text-[#eeb224]">{awayCount}</p>
               </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full" />
+              <div className="w-12 h-12 bg-[#eeb224]/10 rounded-xl flex items-center justify-center">
+                <div className="w-3 h-3 bg-[#eeb224] rounded-full" />
               </div>
             </div>
           </div>
@@ -186,12 +242,10 @@ const AgentsView = ({ agents: initialAgents }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Tickets</p>
-                <p className="text-2xl font-bold text-[#FF8800]">
-                  {agents.reduce((sum, a) => sum + a.assignedTickets, 0)}
-                </p>
+                <p className="text-2xl font-bold text-[#393d8a]">{totalTickets}</p>
               </div>
-              <div className="w-12 h-12 bg-[#FF8800]/10 rounded-xl flex items-center justify-center">
-                <Filter className="w-6 h-6 text-[#FF8800]" />
+              <div className="w-12 h-12 bg-[#393d8a]/10 rounded-xl flex items-center justify-center">
+                <Filter className="w-6 h-6 text-[#393d8a]" />
               </div>
             </div>
           </div>
@@ -231,8 +285,8 @@ const AgentsView = ({ agents: initialAgents }) => {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="w-12 h-12 bg-[#0F3252] rounded-full flex items-center justify-center text-white font-semibold">
-                      {agent.avatar}
+                    <div className="w-12 h-12 bg-[#393d8a] rounded-full flex items-center justify-center text-white font-semibold">
+                      {agent.avatar || agent.name?.split(' ').map(n => n[0]).join('').toUpperCase()}
                     </div>
                     <div className={cn(
                       "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white",
@@ -241,28 +295,35 @@ const AgentsView = ({ agents: initialAgents }) => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">{agent.name}</h3>
-                    <p className="text-sm text-gray-500">{agent.role}</p>
+                    <p className="text-sm text-gray-500 capitalize">{agent.role}</p>
                   </div>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'online')}>
-                      Set Online
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'away')}>
-                      Set Away
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'offline')}>
-                      Set Offline
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-600">Remove Agent</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {agent.id !== currentUser?.id && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'online')}>
+                        Set Online
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'away')}>
+                        Set Away
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'offline')}>
+                        Set Offline
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-red-600"
+                        onClick={() => handleDeleteAgent(agent.id)}
+                      >
+                        Remove Agent
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
 
               <div className="text-sm text-gray-500 mb-4">{agent.email}</div>
@@ -270,7 +331,7 @@ const AgentsView = ({ agents: initialAgents }) => {
               <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                 <div>
                   <p className="text-xs text-gray-500">Assigned Tickets</p>
-                  <p className="text-lg font-bold text-[#5C0F8B]">{agent.assignedTickets}</p>
+                  <p className="text-lg font-bold text-[#393d8a]">{agent.assigned_tickets || 0}</p>
                 </div>
                 <div className={cn(
                   "px-3 py-1.5 rounded-full text-xs font-medium capitalize",
@@ -284,6 +345,14 @@ const AgentsView = ({ agents: initialAgents }) => {
             </div>
           ))}
         </div>
+
+        {filteredAgents.length === 0 && (
+          <div className="text-center py-12">
+            <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900">No agents found</h3>
+            <p className="text-gray-500">Try adjusting your search or filter</p>
+          </div>
+        )}
       </div>
     </div>
   );

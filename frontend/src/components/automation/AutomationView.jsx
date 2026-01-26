@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Zap, Clock, MessageSquare, Search, ToggleLeft, ToggleRight, Edit2, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Zap, Clock, MessageSquare, Search, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import { getAutoResponses, createAutoResponse, toggleAutoResponse, deleteAutoResponse } from '../../services/api';
 
 const triggerTypes = {
   first_contact: { label: 'First Contact', icon: MessageSquare, color: 'bg-blue-100 text-blue-700' },
@@ -29,10 +30,11 @@ const triggerTypes = {
   keyword: { label: 'Keyword Match', icon: Search, color: 'bg-orange-100 text-orange-700' }
 };
 
-const AutomationView = ({ autoResponses: initialResponses }) => {
-  const [responses, setResponses] = useState(initialResponses);
+const AutomationView = () => {
+  const [responses, setResponses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [editingResponse, setEditingResponse] = useState(null);
+  const [creating, setCreating] = useState(false);
   const [newResponse, setNewResponse] = useState({
     name: '',
     trigger: 'first_contact',
@@ -41,35 +43,65 @@ const AutomationView = ({ autoResponses: initialResponses }) => {
     active: true
   });
 
-  const handleToggleActive = (id) => {
-    setResponses(responses.map(r => 
-      r.id === id ? { ...r, active: !r.active } : r
-    ));
+  useEffect(() => {
+    loadResponses();
+  }, []);
+
+  const loadResponses = async () => {
+    try {
+      const data = await getAutoResponses();
+      setResponses(data);
+    } catch (error) {
+      console.error('Failed to load auto responses:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddResponse = () => {
+  const handleToggleActive = async (id) => {
+    try {
+      await toggleAutoResponse(id);
+      await loadResponses();
+    } catch (error) {
+      console.error('Failed to toggle:', error);
+    }
+  };
+
+  const handleAddResponse = async () => {
     if (!newResponse.name || !newResponse.message) return;
     
-    let trigger = newResponse.trigger;
-    if (trigger === 'keyword' && newResponse.keywords) {
-      trigger = `keyword:${newResponse.keywords}`;
+    setCreating(true);
+    try {
+      let trigger = newResponse.trigger;
+      if (trigger === 'keyword' && newResponse.keywords) {
+        trigger = `keyword:${newResponse.keywords}`;
+      }
+      
+      await createAutoResponse({
+        name: newResponse.name,
+        trigger,
+        message: newResponse.message,
+        active: newResponse.active
+      });
+      
+      await loadResponses();
+      setNewResponse({ name: '', trigger: 'first_contact', keywords: '', message: '', active: true });
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to create:', error);
+    } finally {
+      setCreating(false);
     }
-    
-    const response = {
-      id: `ar${responses.length + 1}`,
-      name: newResponse.name,
-      trigger,
-      message: newResponse.message,
-      active: newResponse.active
-    };
-    
-    setResponses([...responses, response]);
-    setNewResponse({ name: '', trigger: 'first_contact', keywords: '', message: '', active: true });
-    setIsAddDialogOpen(false);
   };
 
-  const handleDeleteResponse = (id) => {
-    setResponses(responses.filter(r => r.id !== id));
+  const handleDeleteResponse = async (id) => {
+    if (!window.confirm('Delete this auto response?')) return;
+    try {
+      await deleteAutoResponse(id);
+      await loadResponses();
+    } catch (error) {
+      console.error('Failed to delete:', error);
+    }
   };
 
   const getTriggerInfo = (trigger) => {
@@ -78,6 +110,14 @@ const AutomationView = ({ autoResponses: initialResponses }) => {
     }
     return triggerTypes[trigger] || triggerTypes.first_contact;
   };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#393d8a]" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -90,7 +130,7 @@ const AutomationView = ({ autoResponses: initialResponses }) => {
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 bg-[#FF8800] hover:bg-[#FF8800]/90">
+              <Button className="gap-2 bg-[#eeb224] hover:bg-[#eeb224]/90 text-white">
                 <Plus className="w-4 h-4" />
                 Add Response
               </Button>
@@ -162,7 +202,12 @@ const AutomationView = ({ autoResponses: initialResponses }) => {
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddResponse} className="bg-[#5C0F8B] hover:bg-[#5C0F8B]/90">
+                <Button 
+                  onClick={handleAddResponse} 
+                  className="bg-[#393d8a] hover:bg-[#393d8a]/90"
+                  disabled={creating}
+                >
+                  {creating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                   Create Response
                 </Button>
               </DialogFooter>
@@ -171,7 +216,7 @@ const AutomationView = ({ autoResponses: initialResponses }) => {
         </div>
 
         {/* Info Card */}
-        <div className="bg-gradient-to-r from-[#5C0F8B] to-[#0F3252] rounded-xl p-6 mb-6 text-white">
+        <div className="bg-gradient-to-r from-[#393d8a] to-[#30a34b] rounded-xl p-6 mb-6 text-white">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
               <Zap className="w-6 h-6" />
