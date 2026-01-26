@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict, Any
 from datetime import datetime
 import uuid
 
@@ -80,13 +80,11 @@ class EmailChannel(BaseModel):
     name: str
     email_address: str
     provider: Literal['smtp', 'sendgrid', 'mailgun', 'aws_ses'] = 'smtp'
-    # SMTP settings
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_use_tls: bool = True
-    # API-based settings
     api_key: str = ""
     is_connected: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -106,10 +104,11 @@ class EmailChannelCreate(BaseModel):
 # Conversation Models
 class Message(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    sender: Literal['customer', 'agent']
+    sender: Literal['customer', 'agent', 'bot']
     text: str
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().strftime('%I:%M %p'))
     agent_id: Optional[str] = None
+    automation_id: Optional[str] = None  # Track which automation sent this
 
 class Customer(BaseModel):
     name: str
@@ -117,12 +116,18 @@ class Customer(BaseModel):
     avatar: str = ""
     phone: str = ""
     location: str = ""
+    # Additional customer data fields for database lookup
+    customer_id: str = ""
+    account_type: str = ""
+    tracking_numbers: List[str] = []
+    last_order_date: str = ""
+    total_orders: int = 0
 
 class Conversation(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     customer: Customer
     channel: Literal['email', 'whatsapp', 'facebook', 'chat']
-    channel_id: str = ""  # Reference to specific channel configuration
+    channel_id: str = ""
     subject: str
     last_message: str
     timestamp: str = ""
@@ -131,6 +136,7 @@ class Conversation(BaseModel):
     assigned_to: Optional[str] = None
     unread: bool = True
     messages: List[Message] = []
+    tags: List[str] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class ConversationCreate(BaseModel):
@@ -143,11 +149,77 @@ class ConversationCreate(BaseModel):
 class MessageCreate(BaseModel):
     text: str
 
-# Auto Response Models
+# ============== ENHANCED AUTOMATION MODELS ==============
+
+# Trigger types for automations
+class AutomationTrigger(BaseModel):
+    type: Literal['keyword', 'first_message', 'all_messages', 'no_agent_assigned', 'outside_hours']
+    keywords: List[str] = []  # For keyword trigger
+    match_type: Literal['contains', 'exact', 'starts_with', 'regex'] = 'contains'
+    case_sensitive: bool = False
+
+# Condition types
+class AutomationCondition(BaseModel):
+    type: Literal['customer_exists', 'has_tracking', 'channel_is', 'tag_contains', 'always']
+    value: str = ""  # The value to check against
+    operator: Literal['equals', 'not_equals', 'contains', 'not_contains'] = 'equals'
+
+# Action types
+class AutomationAction(BaseModel):
+    type: Literal['send_reply', 'lookup_customer', 'lookup_tracking', 'assign_agent', 'add_tag', 'set_priority', 'set_status', 'send_to_human']
+    # For send_reply
+    message_template: str = ""  # Can include variables like {{customer_name}}, {{tracking_status}}
+    # For assign_agent
+    agent_id: str = ""
+    assign_mode: Literal['specific', 'round_robin', 'least_busy'] = 'round_robin'
+    # For add_tag
+    tag: str = ""
+    # For set_priority
+    priority: Literal['urgent', 'high', 'medium', 'low'] = 'medium'
+    # For set_status
+    status: Literal['open', 'pending', 'resolved'] = 'open'
+    # For database lookup
+    lookup_field: Literal['email', 'phone', 'tracking_number', 'customer_id'] = 'email'
+    # Delay before action (in seconds)
+    delay: int = 0
+
+# Complete Automation Flow
+class AutomationFlow(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str = ""
+    active: bool = True
+    # Trigger that starts the automation
+    trigger: AutomationTrigger
+    # Conditions that must be met (AND logic)
+    conditions: List[AutomationCondition] = []
+    # Actions to perform in sequence
+    actions: List[AutomationAction] = []
+    # Channels this automation applies to
+    channels: List[Literal['email', 'whatsapp', 'facebook', 'chat', 'all']] = ['all']
+    # Priority (higher = runs first)
+    priority: int = 0
+    # Stats
+    times_triggered: int = 0
+    last_triggered: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_by: str = ""
+
+class AutomationFlowCreate(BaseModel):
+    name: str
+    description: str = ""
+    active: bool = True
+    trigger: AutomationTrigger
+    conditions: List[AutomationCondition] = []
+    actions: List[AutomationAction] = []
+    channels: List[Literal['email', 'whatsapp', 'facebook', 'chat', 'all']] = ['all']
+    priority: int = 0
+
+# Auto Response Models (simplified version - keeping for backward compatibility)
 class AutoResponse(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    trigger: str  # 'first_contact', 'outside_hours', 'keyword:word1,word2'
+    trigger: str
     message: str
     active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -159,27 +231,33 @@ class AutoResponseCreate(BaseModel):
     message: str
     active: bool = True
 
-# Chat Flow Models
-class FlowStep(BaseModel):
+# Customer Database for lookups
+class CustomerRecord(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    type: Literal['message', 'input', 'action', 'condition', 'options', 'route']
-    content: str
-
-class ChatFlow(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    email: str
     name: str
-    description: str = ""
-    active: bool = True
-    steps: List[FlowStep] = []
-    usage_count: int = 0
+    phone: str = ""
+    account_type: Literal['individual', 'business', 'vip'] = 'individual'
+    tracking_numbers: List[str] = []
+    address: str = ""
+    city: str = ""
+    country: str = ""
+    notes: str = ""
+    total_orders: int = 0
+    last_order_date: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    created_by: str = ""
 
-class ChatFlowCreate(BaseModel):
-    name: str
-    description: str = ""
-    active: bool = True
-    steps: List[FlowStep] = []
+# Tracking information
+class TrackingInfo(BaseModel):
+    tracking_number: str
+    status: Literal['pending', 'in_transit', 'out_for_delivery', 'delivered', 'exception'] = 'pending'
+    carrier: str = "Post Aruba"
+    origin: str = ""
+    destination: str = ""
+    estimated_delivery: str = ""
+    last_update: str = ""
+    last_location: str = ""
+    history: List[Dict[str, str]] = []
 
 # Settings Models
 class GeneralSettings(BaseModel):
