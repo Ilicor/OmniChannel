@@ -7,6 +7,7 @@ Tests all backend endpoints with proper authentication and role-based access con
 import requests
 import json
 import sys
+import time
 from typing import Dict, Any, Optional
 
 # Base URL from the review request
@@ -93,18 +94,6 @@ class PostArubaAPITester:
         result = self.make_request("GET", "/")
         if result.get("success"):
             self.log_test("Root Endpoint", True, "API is running", result.get("data"))
-        
-        # Test get agents only
-        result = self.make_request("GET", "/users/agents", token=self.admin_token)
-        if result.get("success"):
-            agents = result.get("data", [])
-            agent_roles = [a.get("role") for a in agents]
-            if all(role == "agent" for role in agent_roles):
-                self.log_test("Get Agents Only", True, f"Retrieved {len(agents)} agents")
-            else:
-                self.log_test("Get Agents Only", False, f"Non-agent users returned: {agent_roles}")
-        else:
-            self.log_test("Get Agents Only", False, "Failed to get agents", result)
         else:
             self.log_test("Root Endpoint", False, "API not responding", result)
         
@@ -169,7 +158,6 @@ class PostArubaAPITester:
             self.log_test("Get All Users", False, "Failed to get users", result)
         
         # Test create new agent (use timestamp to ensure unique email)
-        import time
         timestamp = int(time.time())
         agent_data = {
             "name": "Test Agent",
@@ -202,6 +190,18 @@ class PostArubaAPITester:
                 self.log_test("Agent Login", False, "Agent login failed", result)
         else:
             self.log_test("Create Agent", False, "Failed to create agent", result)
+        
+        # Test get agents only
+        result = self.make_request("GET", "/users/agents", token=self.admin_token)
+        if result.get("success"):
+            agents = result.get("data", [])
+            agent_roles = [a.get("role") for a in agents]
+            if all(role == "agent" for role in agent_roles):
+                self.log_test("Get Agents Only", True, f"Retrieved {len(agents)} agents")
+            else:
+                self.log_test("Get Agents Only", False, f"Non-agent users returned: {agent_roles}")
+        else:
+            self.log_test("Get Agents Only", False, "Failed to get agents", result)
     
     def test_conversations_api(self):
         """Test conversations API"""
@@ -230,9 +230,10 @@ class PostArubaAPITester:
             self.log_test("Channels API", False, "No admin token available")
             return
         
-        # Test create WhatsApp channel
+        # Test create WhatsApp channel (use timestamp for unique name)
+        timestamp = int(time.time())
         whatsapp_data = {
-            "name": "Main WhatsApp",
+            "name": f"Main WhatsApp {timestamp}",
             "phone_number": "+297555100"
         }
         
