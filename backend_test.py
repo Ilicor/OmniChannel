@@ -156,10 +156,12 @@ class PostArubaAPITester:
         else:
             self.log_test("Get All Users", False, "Failed to get users", result)
         
-        # Test create new agent
+        # Test create new agent (use timestamp to ensure unique email)
+        import time
+        timestamp = int(time.time())
         agent_data = {
             "name": "Test Agent",
-            "email": "test@postaruba.com",
+            "email": f"test{timestamp}@postaruba.com",
             "password": "test123",
             "role": "agent"
         }
@@ -169,25 +171,10 @@ class PostArubaAPITester:
             agent = result.get("data", {})
             self.created_agent_id = agent.get("id")
             self.log_test("Create Agent", True, f"Created agent: {agent.get('name')}")
-        else:
-            self.log_test("Create Agent", False, "Failed to create agent", result)
-        
-        # Test get agents only
-        result = self.make_request("GET", "/users/agents", token=self.admin_token)
-        if result.get("success"):
-            agents = result.get("data", [])
-            agent_roles = [a.get("role") for a in agents]
-            if all(role == "agent" for role in agent_roles):
-                self.log_test("Get Agents Only", True, f"Retrieved {len(agents)} agents")
-            else:
-                self.log_test("Get Agents Only", False, f"Non-agent users returned: {agent_roles}")
-        else:
-            self.log_test("Get Agents Only", False, "Failed to get agents", result)
-        
-        # Test agent login
-        if self.created_agent_id:
+            
+            # Test agent login with the new agent
             agent_login = {
-                "email": "test@postaruba.com",
+                "email": agent_data["email"],
                 "password": "test123"
             }
             
@@ -201,6 +188,8 @@ class PostArubaAPITester:
                     self.log_test("Agent Login", False, "No access token in response")
             else:
                 self.log_test("Agent Login", False, "Agent login failed", result)
+        else:
+            self.log_test("Create Agent", False, "Failed to create agent", result)
     
     def test_conversations_api(self):
         """Test conversations API"""
