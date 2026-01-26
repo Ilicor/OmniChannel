@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -19,6 +19,21 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
+  const logout = useCallback(async () => {
+    try {
+      if (token) {
+        await axios.post(`${API}/auth/logout`);
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('token');
+      delete axios.defaults.headers.common['Authorization'];
+      setToken(null);
+      setUser(null);
+    }
+  }, [token]);
+
   const fetchUser = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/auth/me`);
@@ -29,7 +44,16 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout]);
+
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
+  }, [token, fetchUser]);
 
   const login = async (email, password) => {
     try {
@@ -49,21 +73,6 @@ export const AuthProvider = ({ children }) => {
         success: false, 
         error: error.response?.data?.detail || 'Login failed' 
       };
-    }
-  };
-
-  const logout = async () => {
-    try {
-      if (token) {
-        await axios.post(`${API}/auth/logout`);
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
-      setToken(null);
-      setUser(null);
     }
   };
 
