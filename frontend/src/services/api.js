@@ -6,7 +6,7 @@ export const API = `${BACKEND_URL}/api`;
 // Conversations
 export const getConversations = async (channel = 'all') => {
   const params = channel !== 'all' ? { channel } : {};
-  const response = await axios.get(`${API}/conversations`, { params });
+  const response = await axios.get(`${API}/conversations/`, { params });
   return response.data;
 };
 
