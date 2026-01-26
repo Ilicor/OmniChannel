@@ -1,52 +1,108 @@
-import { useEffect } from "react";
-import "@/App.css";
+import React, { useState, useEffect } from "react";
+import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Layout Components
+import Sidebar from "./components/layout/Sidebar";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+// Inbox Components
+import ConversationList from "./components/inbox/ConversationList";
+import ConversationView from "./components/inbox/ConversationView";
+import CustomerPanel from "./components/inbox/CustomerPanel";
+
+// Other Views
+import AgentsView from "./components/agents/AgentsView";
+import AutomationView from "./components/automation/AutomationView";
+import FlowsView from "./components/flows/FlowsView";
+import AnalyticsView from "./components/analytics/AnalyticsView";
+import SettingsView from "./components/settings/SettingsView";
+
+// Mock Data
+import { 
+  channels, 
+  conversations as mockConversations, 
+  agents as mockAgents,
+  autoResponses,
+  chatFlows,
+  statistics
+} from "./data/mockData";
+
+function App() {
+  const [activeView, setActiveView] = useState('inbox');
+  const [activeChannel, setActiveChannel] = useState('all');
+  const [conversations, setConversations] = useState(mockConversations);
+  const [agents, setAgents] = useState(mockAgents);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+
+  // Filter conversations by channel
+  const filteredConversations = activeChannel === 'all' 
+    ? conversations 
+    : conversations.filter(conv => conv.channel === activeChannel);
+
+  // Handle agent assignment
+  const handleAssignAgent = (conversationId, agentId) => {
+    setConversations(conversations.map(conv => 
+      conv.id === conversationId ? { ...conv, assignedTo: agentId } : conv
+    ));
+    
+    if (selectedConversation?.id === conversationId) {
+      setSelectedConversation({ ...selectedConversation, assignedTo: agentId });
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  // Render current view
+  const renderView = () => {
+    switch (activeView) {
+      case 'inbox':
+        return (
+          <div className="flex flex-1 h-screen overflow-hidden">
+            <ConversationList
+              conversations={filteredConversations}
+              selectedConversation={selectedConversation}
+              setSelectedConversation={setSelectedConversation}
+              agents={agents}
+            />
+            <ConversationView
+              conversation={selectedConversation}
+              agents={agents}
+              onAssignAgent={handleAssignAgent}
+            />
+            <CustomerPanel conversation={selectedConversation} />
+          </div>
+        );
+      
+      case 'agents':
+        return <AgentsView agents={agents} />;
+      
+      case 'automation':
+        return <AutomationView autoResponses={autoResponses} />;
+      
+      case 'flows':
+        return <FlowsView chatFlows={chatFlows} />;
+      
+      case 'analytics':
+        return <AnalyticsView statistics={statistics} />;
+      
+      case 'settings':
+        return <SettingsView />;
+      
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
-  return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+    <div className="App flex bg-gray-50">
+      <Sidebar
+        channels={channels}
+        activeChannel={activeChannel}
+        setActiveChannel={setActiveChannel}
+        activeView={activeView}
+        setActiveView={setActiveView}
+      />
+      <main className="ml-64 flex-1 flex">
+        {renderView()}
+      </main>
     </div>
   );
 }
