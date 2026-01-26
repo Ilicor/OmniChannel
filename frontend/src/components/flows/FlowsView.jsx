@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Plus, GitBranch, Play, Pause, Edit2, Trash2, 
+  Plus, GitBranch, Play, Edit2, Trash2, 
   MessageSquare, Settings2, ArrowRight, GitMerge,
-  ChevronRight, MoreVertical, Copy, Zap
+  ChevronRight, MoreVertical, Copy, Zap, Loader2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
@@ -25,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
+import { getChatFlows, createChatFlow, toggleChatFlow, deleteChatFlow } from '../../services/api';
 
 const stepIcons = {
   message: MessageSquare,
@@ -44,48 +45,90 @@ const stepColors = {
   route: 'bg-pink-100 text-pink-700 border-pink-200'
 };
 
-const FlowsView = ({ chatFlows: initialFlows }) => {
-  const [flows, setFlows] = useState(initialFlows);
+const FlowsView = () => {
+  const [flows, setFlows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedFlow, setSelectedFlow] = useState(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [newFlow, setNewFlow] = useState({
     name: '',
     description: '',
     active: true
   });
 
-  const handleToggleActive = (id) => {
-    setFlows(flows.map(f => 
-      f.id === id ? { ...f, active: !f.active } : f
-    ));
-  };
+  useEffect(() => {
+    loadFlows();
+  }, []);
 
-  const handleAddFlow = () => {
-    if (!newFlow.name) return;
-    
-    const flow = {
-      id: `flow${flows.length + 1}`,
-      name: newFlow.name,
-      description: newFlow.description,
-      active: newFlow.active,
-      steps: [
-        { id: 's1', type: 'message', content: 'Welcome! How can I help you today?' }
-      ],
-      createdAt: new Date().toISOString().split('T')[0],
-      usageCount: 0
-    };
-    
-    setFlows([...flows, flow]);
-    setNewFlow({ name: '', description: '', active: true });
-    setIsAddDialogOpen(false);
-  };
-
-  const handleDeleteFlow = (id) => {
-    setFlows(flows.filter(f => f.id !== id));
-    if (selectedFlow?.id === id) {
-      setSelectedFlow(null);
+  const loadFlows = async () => {
+    try {
+      const data = await getChatFlows();
+      setFlows(data);
+      if (data.length > 0 && !selectedFlow) {
+        setSelectedFlow(data[0]);
+      }
+    } catch (error) {
+      console.error('Failed to load flows:', error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleToggleActive = async (id) => {
+    try {
+      await toggleChatFlow(id);
+      await loadFlows();
+    } catch (error) {
+      console.error('Failed to toggle:', error);
+    }
+  };
+
+  const handleAddFlow = async () => {
+    if (!newFlow.name) return;
+    
+    setCreating(true);
+    try {
+      const flow = await createChatFlow({
+        name: newFlow.name,
+        description: newFlow.description,
+        active: newFlow.active,
+        steps: [
+          { id: 's1', type: 'message', content: 'Welcome! How can I help you today?' }
+        ]
+      });
+      
+      await loadFlows();
+      setSelectedFlow(flow);
+      setNewFlow({ name: '', description: '', active: true });
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to create:', error);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDeleteFlow = async (id) => {
+    if (!window.confirm('Delete this flow?')) return;
+    try {
+      await deleteChatFlow(id);
+      if (selectedFlow?.id === id) {
+        setSelectedFlow(null);
+      }
+      await loadFlows();
+    } catch (error) {
+      console.error('Failed to delete:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#393d8a]" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 bg-gray-50 flex">
@@ -96,7 +139,7 @@ const FlowsView = ({ chatFlows: initialFlows }) => {
             <h1 className="text-xl font-bold text-gray-900">Chat Flows</h1>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="gap-1 bg-[#FF8800] hover:bg-[#FF8800]/90">
+                <Button size="sm" className="gap-1 bg-[#eeb224] hover:bg-[#eeb224]/90">
                   <Plus className="w-4 h-4" />
                   New Flow
                 </Button>
@@ -141,7 +184,12 @@ const FlowsView = ({ chatFlows: initialFlows }) => {
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAddFlow} className="bg-[#5C0F8B] hover:bg-[#5C0F8B]/90">
+                  <Button 
+                    onClick={handleAddFlow} 
+                    className="bg-[#393d8a] hover:bg-[#393d8a]/90"
+                    disabled={creating}
+                  >
+                    {creating && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                     Create Flow
                   </Button>
                 </DialogFooter>
@@ -159,18 +207,18 @@ const FlowsView = ({ chatFlows: initialFlows }) => {
               onClick={() => setSelectedFlow(flow)}
               className={cn(
                 "p-4 border-b border-gray-100 cursor-pointer transition-all hover:bg-gray-50",
-                selectedFlow?.id === flow.id && "bg-[#5C0F8B]/5 border-l-4 border-l-[#5C0F8B]"
+                selectedFlow?.id === flow.id && "bg-[#393d8a]/5 border-l-4 border-l-[#393d8a]"
               )}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center",
-                    flow.active ? "bg-[#5C0F8B]/10" : "bg-gray-100"
+                    flow.active ? "bg-[#393d8a]/10" : "bg-gray-100"
                   )}>
                     <GitBranch className={cn(
                       "w-4 h-4",
-                      flow.active ? "text-[#5C0F8B]" : "text-gray-400"
+                      flow.active ? "text-[#393d8a]" : "text-gray-400"
                     )} />
                   </div>
                   <div>
@@ -180,7 +228,7 @@ const FlowsView = ({ chatFlows: initialFlows }) => {
                     )}>
                       {flow.name}
                     </h3>
-                    <p className="text-xs text-gray-500">{flow.steps.length} steps</p>
+                    <p className="text-xs text-gray-500">{(flow.steps || []).length} steps</p>
                   </div>
                 </div>
                 <DropdownMenu>
@@ -213,7 +261,7 @@ const FlowsView = ({ chatFlows: initialFlows }) => {
               </div>
               <p className="text-sm text-gray-500 line-clamp-2 mb-3">{flow.description}</p>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">Used {flow.usageCount} times</span>
+                <span className="text-xs text-gray-400">Used {flow.usage_count || 0} times</span>
                 <span className={cn(
                   "px-2 py-0.5 rounded-full text-xs font-medium",
                   flow.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
@@ -223,6 +271,12 @@ const FlowsView = ({ chatFlows: initialFlows }) => {
               </div>
             </div>
           ))}
+          
+          {flows.length === 0 && (
+            <div className="p-8 text-center text-gray-500">
+              No flows yet. Create your first one!
+            </div>
+          )}
         </div>
       </div>
 
@@ -249,7 +303,7 @@ const FlowsView = ({ chatFlows: initialFlows }) => {
                     <Play className="w-4 h-4" />
                     Test Flow
                   </Button>
-                  <Button className="gap-2 bg-[#5C0F8B] hover:bg-[#5C0F8B]/90">
+                  <Button className="gap-2 bg-[#393d8a] hover:bg-[#393d8a]/90">
                     <Edit2 className="w-4 h-4" />
                     Edit Flow
                   </Button>
@@ -261,19 +315,14 @@ const FlowsView = ({ chatFlows: initialFlows }) => {
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <h3 className="font-semibold text-gray-900 mb-6">Flow Steps</h3>
               <div className="space-y-4">
-                {selectedFlow.steps.map((step, index) => {
+                {(selectedFlow.steps || []).map((step, index) => {
                   const StepIcon = stepIcons[step.type] || MessageSquare;
                   return (
                     <div key={step.id} className="flex items-center gap-4">
                       {/* Step Number */}
-                      <div className="w-8 h-8 bg-[#0F3252] rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                      <div className="w-8 h-8 bg-[#393d8a] rounded-full flex items-center justify-center text-white font-semibold text-sm">
                         {index + 1}
                       </div>
-                      
-                      {/* Connector Line */}
-                      {index < selectedFlow.steps.length - 1 && (
-                        <div className="absolute left-4 top-10 w-0.5 h-6 bg-gray-200" />
-                      )}
                       
                       {/* Step Card */}
                       <div className={cn(
@@ -295,7 +344,7 @@ const FlowsView = ({ chatFlows: initialFlows }) => {
                       </div>
 
                       {/* Arrow to next */}
-                      {index < selectedFlow.steps.length - 1 && (
+                      {index < (selectedFlow.steps || []).length - 1 && (
                         <ChevronRight className="w-5 h-5 text-gray-300" />
                       )}
                     </div>

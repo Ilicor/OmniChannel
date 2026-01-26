@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+// Context
+import { AuthProvider, useAuth } from "./context/AuthContext";
+
+// Pages
+import LoginPage from "./pages/LoginPage";
 
 // Layout Components
 import Sidebar from "./components/layout/Sidebar";
@@ -17,38 +22,75 @@ import FlowsView from "./components/flows/FlowsView";
 import AnalyticsView from "./components/analytics/AnalyticsView";
 import SettingsView from "./components/settings/SettingsView";
 
-// Mock Data
-import { 
-  channels, 
-  conversations as mockConversations, 
-  agents as mockAgents,
-  autoResponses,
-  chatFlows,
-  statistics
-} from "./data/mockData";
+// API
+import { getConversations, getUsers } from "./services/api";
+import { Loader2 } from "lucide-react";
 
-function App() {
+const channels = [
+  { id: 'all', name: 'All Channels', icon: 'Inbox', count: 0 },
+  { id: 'email', name: 'Email', icon: 'Mail', count: 0 },
+  { id: 'whatsapp', name: 'WhatsApp', icon: 'MessageCircle', count: 0 },
+  { id: 'facebook', name: 'Facebook', icon: 'Facebook', count: 0 },
+  { id: 'chat', name: 'Live Chat', icon: 'MessageSquare', count: 0 }
+];
+
+function AppContent() {
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const [activeView, setActiveView] = useState('inbox');
   const [activeChannel, setActiveChannel] = useState('all');
-  const [conversations, setConversations] = useState(mockConversations);
-  const [agents, setAgents] = useState(mockAgents);
+  const [conversations, setConversations] = useState([]);
+  const [agents, setAgents] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [channelCounts, setChannelCounts] = useState(channels);
 
-  // Filter conversations by channel
-  const filteredConversations = activeChannel === 'all' 
-    ? conversations 
-    : conversations.filter(conv => conv.channel === activeChannel);
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated, activeChannel]);
 
-  // Handle agent assignment
-  const handleAssignAgent = (conversationId, agentId) => {
-    setConversations(conversations.map(conv => 
-      conv.id === conversationId ? { ...conv, assignedTo: agentId } : conv
-    ));
-    
-    if (selectedConversation?.id === conversationId) {
-      setSelectedConversation({ ...selectedConversation, assignedTo: agentId });
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [convData, usersData] = await Promise.all([
+        getConversations(activeChannel),
+        getUsers()
+      ]);
+      
+      setConversations(convData);
+      setAgents(usersData);
+      
+      // Update channel counts
+      if (activeChannel === 'all') {
+        const counts = channels.map(ch => ({
+          ...ch,
+          count: ch.id === 'all' 
+            ? convData.length 
+            : convData.filter(c => c.channel === ch.id).length
+        }));
+        setChannelCounts(counts);
+      }
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#393d8a]" />
+      </div>
+    );
+  }
+
+  // Show login if not authenticated
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   // Render current view
   const renderView = () => {
@@ -57,31 +99,32 @@ function App() {
         return (
           <div className="flex flex-1 h-screen overflow-hidden">
             <ConversationList
-              conversations={filteredConversations}
+              conversations={conversations}
               selectedConversation={selectedConversation}
               setSelectedConversation={setSelectedConversation}
               agents={agents}
+              loading={loading}
             />
             <ConversationView
               conversation={selectedConversation}
               agents={agents}
-              onAssignAgent={handleAssignAgent}
+              onUpdate={loadData}
             />
             <CustomerPanel conversation={selectedConversation} />
           </div>
         );
       
       case 'agents':
-        return <AgentsView agents={agents} />;
+        return <AgentsView />;
       
       case 'automation':
-        return <AutomationView autoResponses={autoResponses} />;
+        return <AutomationView />;
       
       case 'flows':
-        return <FlowsView chatFlows={chatFlows} />;
+        return <FlowsView />;
       
       case 'analytics':
-        return <AnalyticsView statistics={statistics} />;
+        return <AnalyticsView />;
       
       case 'settings':
         return <SettingsView />;
@@ -94,7 +137,7 @@ function App() {
   return (
     <div className="App flex bg-gray-50">
       <Sidebar
-        channels={channels}
+        channels={channelCounts}
         activeChannel={activeChannel}
         setActiveChannel={setActiveChannel}
         activeView={activeView}
@@ -104,6 +147,14 @@ function App() {
         {renderView()}
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
