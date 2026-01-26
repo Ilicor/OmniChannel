@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Inbox, Mail, MessageCircle, MessageSquare, Facebook, 
-  Users, Settings, BarChart3, Zap, GitBranch, LogOut,
+  Users, Settings, BarChart3, Zap, LogOut,
   ChevronDown, Shield
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
