@@ -32,3 +32,104 @@
         transform: rotate(360deg);
     }
 }
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, input, select, textarea {
+    transition: all 0.2s ease;
+}
+
+/* Line clamp utility */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.animate-slideIn {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Focus styles */
+*:focus-visible {
+    outline: 2px solid #5C0F8B;
+    outline-offset: 2px;
+}
+
+/* Custom checkbox styling */
+input[type="checkbox"]:checked {
+    background-color: #5C0F8B;
+    border-color: #5C0F8B;
+}
+
+/* Selection color */
+::selection {
+    background-color: #5C0F8B;
+    color: white;
+}
+
+/* Post Aruba theme variables */
+:root {
+    --post-aruba-orange: #FF8800;
+    --post-aruba-purple: #5C0F8B;
+    --post-aruba-blue: #0F3252;
+}
