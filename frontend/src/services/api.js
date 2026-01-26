@@ -42,7 +42,7 @@ export const getAgents = async () => {
 };
 
 export const createUser = async (userData) => {
-  const response = await axios.post(`${API}/users`, userData);
+  const response = await axios.post(`${API}/users/`, userData);
   return response.data;
 };
 
@@ -145,14 +145,14 @@ export const testEmailChannel = async (id) => {
   return response.data;
 };
 
-// Automation
+// Legacy Automation (simple auto-responses)
 export const getAutoResponses = async () => {
-  const response = await axios.get(`${API}/automation`);
+  const response = await axios.get(`${API}/automation/`);
   return response.data;
 };
 
 export const createAutoResponse = async (data) => {
-  const response = await axios.post(`${API}/automation`, data);
+  const response = await axios.post(`${API}/automation/`, data);
   return response.data;
 };
 
@@ -171,14 +171,55 @@ export const toggleAutoResponse = async (id) => {
   return response.data;
 };
 
-// Chat Flows
+// NEW: Advanced Automations
+export const getAutomations = async () => {
+  const response = await axios.get(`${API}/automations/`);
+  return response.data;
+};
+
+export const getAutomation = async (id) => {
+  const response = await axios.get(`${API}/automations/${id}`);
+  return response.data;
+};
+
+export const createAutomation = async (data) => {
+  const response = await axios.post(`${API}/automations/`, data);
+  return response.data;
+};
+
+export const updateAutomation = async (id, data) => {
+  const response = await axios.put(`${API}/automations/${id}`, data);
+  return response.data;
+};
+
+export const deleteAutomation = async (id) => {
+  const response = await axios.delete(`${API}/automations/${id}`);
+  return response.data;
+};
+
+export const toggleAutomation = async (id) => {
+  const response = await axios.put(`${API}/automations/${id}/toggle`);
+  return response.data;
+};
+
+export const getAutomationTemplates = async () => {
+  const response = await axios.get(`${API}/automations/templates`);
+  return response.data;
+};
+
+export const processAutomation = async (conversationId, messageText) => {
+  const response = await axios.post(`${API}/automations/process?conversation_id=${conversationId}&message_text=${encodeURIComponent(messageText)}`);
+  return response.data;
+};
+
+// Chat Flows (legacy - keeping for compatibility)
 export const getChatFlows = async () => {
-  const response = await axios.get(`${API}/flows`);
+  const response = await axios.get(`${API}/flows/`);
   return response.data;
 };
 
 export const createChatFlow = async (data) => {
-  const response = await axios.post(`${API}/flows`, data);
+  const response = await axios.post(`${API}/flows/`, data);
   return response.data;
 };
 
@@ -199,13 +240,13 @@ export const toggleChatFlow = async (id) => {
 
 // Analytics
 export const getAnalytics = async () => {
-  const response = await axios.get(`${API}/analytics`);
+  const response = await axios.get(`${API}/analytics/`);
   return response.data;
 };
 
 // Settings
 export const getSettings = async () => {
-  const response = await axios.get(`${API}/settings`);
+  const response = await axios.get(`${API}/settings/`);
   return response.data;
 };
 
