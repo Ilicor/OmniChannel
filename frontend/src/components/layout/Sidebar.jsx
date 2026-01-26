@@ -35,7 +35,6 @@ const Sidebar = ({
         ...baseItems,
         { id: 'agents', label: 'Agents', icon: Users },
         { id: 'automation', label: 'Automation', icon: Zap },
-        { id: 'flows', label: 'Chat Flows', icon: GitBranch },
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
         { id: 'settings', label: 'Settings', icon: Settings }
       ];
