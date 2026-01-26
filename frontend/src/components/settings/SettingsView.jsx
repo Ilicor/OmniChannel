@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Save, Bell, Lock, Globe, Palette, Users, Mail, 
-  Shield, Clock, Building, ChevronRight
+  Save, Bell, Lock, Globe, Palette, Clock, Building, ChevronRight,
+  Plus, Trash2, Edit2, CheckCircle, XCircle, Loader2, MessageCircle,
+  Facebook, Mail, ExternalLink, Copy, Eye, EyeOff
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 import {
   Select,
   SelectContent,
@@ -15,237 +17,437 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '../ui/dialog';
+import {
+  getWhatsAppChannels, createWhatsAppChannel, updateWhatsAppChannel, deleteWhatsAppChannel, testWhatsAppChannel,
+  getFacebookChannels, createFacebookChannel, updateFacebookChannel, deleteFacebookChannel, testFacebookChannel,
+  getEmailChannels, createEmailChannel, updateEmailChannel, deleteEmailChannel, testEmailChannel,
+  getSettings, updateGeneralSettings, updateNotificationSettings, updateSecuritySettings, updateBusinessHoursSettings
+} from '../../services/api';
 
 const settingsSections = [
   { id: 'general', label: 'General', icon: Building },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'channels', label: 'Channels', icon: Globe },
-  { id: 'security', label: 'Security', icon: Shield },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'security', label: 'Security', icon: Lock },
   { id: 'business-hours', label: 'Business Hours', icon: Clock },
   { id: 'appearance', label: 'Appearance', icon: Palette }
 ];
 
 const SettingsView = () => {
   const [activeSection, setActiveSection] = useState('general');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // Settings state
   const [settings, setSettings] = useState({
-    companyName: 'Post Aruba',
-    supportEmail: 'support@postaruba.com',
-    timezone: 'America/Aruba',
-    language: 'en',
-    emailNotifications: true,
-    pushNotifications: true,
-    soundAlerts: true,
-    autoAssign: true,
-    twoFactorAuth: false,
-    sessionTimeout: '30',
-    businessHoursStart: '08:00',
-    businessHoursEnd: '18:00',
-    workDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-    primaryColor: '#5C0F8B',
-    accentColor: '#FF8800'
+    general: { company_name: 'Post Aruba', support_email: 'support@postaruba.com', timezone: 'America/Aruba', language: 'en' },
+    notifications: { email_notifications: true, push_notifications: true, sound_alerts: true },
+    security: { two_factor_auth: false, session_timeout: 30 },
+    business_hours: { start_time: '08:00', end_time: '18:00', work_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] }
   });
 
-  const handleSettingChange = (key, value) => {
-    setSettings({ ...settings, [key]: value });
+  // Channel states
+  const [whatsappChannels, setWhatsappChannels] = useState([]);
+  const [facebookChannels, setFacebookChannels] = useState([]);
+  const [emailChannels, setEmailChannels] = useState([]);
+  
+  // Dialog states
+  const [channelDialog, setChannelDialog] = useState({ open: false, type: null, editing: null });
+  const [showSecrets, setShowSecrets] = useState({});
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [settingsData, whatsapp, facebook, email] = await Promise.all([
+        getSettings(),
+        getWhatsAppChannels(),
+        getFacebookChannels(),
+        getEmailChannels()
+      ]);
+      setSettings(settingsData);
+      setWhatsappChannels(whatsapp);
+      setFacebookChannels(facebook);
+      setEmailChannels(email);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleSaveSettings = async () => {
+    setSaving(true);
+    try {
+      switch (activeSection) {
+        case 'general':
+          await updateGeneralSettings(settings.general);
+          break;
+        case 'notifications':
+          await updateNotificationSettings(settings.notifications);
+          break;
+        case 'security':
+          await updateSecuritySettings(settings.security);
+          break;
+        case 'business-hours':
+          await updateBusinessHoursSettings(settings.business_hours);
+          break;
+      }
+      alert('Settings saved successfully');
+    } catch (error) {
+      console.error('Failed to save:', error);
+      alert('Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleSecret = (key) => {
+    setShowSecrets({ ...showSecrets, [key]: !showSecrets[key] });
+  };
+
+  // Channel management functions
+  const handleSaveChannel = async (type, data) => {
+    try {
+      if (channelDialog.editing) {
+        switch (type) {
+          case 'whatsapp':
+            await updateWhatsAppChannel(channelDialog.editing.id, data);
+            break;
+          case 'facebook':
+            await updateFacebookChannel(channelDialog.editing.id, data);
+            break;
+          case 'email':
+            await updateEmailChannel(channelDialog.editing.id, data);
+            break;
+        }
+      } else {
+        switch (type) {
+          case 'whatsapp':
+            await createWhatsAppChannel(data);
+            break;
+          case 'facebook':
+            await createFacebookChannel(data);
+            break;
+          case 'email':
+            await createEmailChannel(data);
+            break;
+        }
+      }
+      await loadData();
+      setChannelDialog({ open: false, type: null, editing: null });
+    } catch (error) {
+      console.error('Failed to save channel:', error);
+      alert('Failed to save channel');
+    }
+  };
+
+  const handleDeleteChannel = async (type, id) => {
+    if (!window.confirm('Are you sure you want to delete this channel?')) return;
+    try {
+      switch (type) {
+        case 'whatsapp':
+          await deleteWhatsAppChannel(id);
+          break;
+        case 'facebook':
+          await deleteFacebookChannel(id);
+          break;
+        case 'email':
+          await deleteEmailChannel(id);
+          break;
+      }
+      await loadData();
+    } catch (error) {
+      console.error('Failed to delete channel:', error);
+    }
+  };
+
+  const handleTestChannel = async (type, id) => {
+    try {
+      let result;
+      switch (type) {
+        case 'whatsapp':
+          result = await testWhatsAppChannel(id);
+          break;
+        case 'facebook':
+          result = await testFacebookChannel(id);
+          break;
+        case 'email':
+          result = await testEmailChannel(id);
+          break;
+      }
+      alert(result.message);
+      await loadData();
+    } catch (error) {
+      alert('Connection test failed');
+    }
+  };
+
+  const renderChannelsSection = () => (
+    <div className="space-y-8">
+      {/* WhatsApp Channels */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <MessageCircle className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">WhatsApp Business</h3>
+              <p className="text-sm text-gray-500">{whatsappChannels.length} channel(s) configured</p>
+            </div>
+          </div>
+          <Button 
+            size="sm" 
+            className="gap-2 bg-[#30a34b] hover:bg-[#30a34b]/90"
+            onClick={() => setChannelDialog({ open: true, type: 'whatsapp', editing: null })}
+          >
+            <Plus className="w-4 h-4" />
+            Add WhatsApp
+          </Button>
+        </div>
+        
+        <div className="space-y-3">
+          {whatsappChannels.map((channel) => (
+            <ChannelCard 
+              key={channel.id}
+              channel={channel}
+              type="whatsapp"
+              icon={<MessageCircle className="w-4 h-4 text-green-600" />}
+              onEdit={() => setChannelDialog({ open: true, type: 'whatsapp', editing: channel })}
+              onDelete={() => handleDeleteChannel('whatsapp', channel.id)}
+              onTest={() => handleTestChannel('whatsapp', channel.id)}
+            />
+          ))}
+          {whatsappChannels.length === 0 && (
+            <p className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg">No WhatsApp channels configured</p>
+          )}
+        </div>
+      </div>
+
+      {/* Facebook Channels */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Facebook className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Facebook Messenger</h3>
+              <p className="text-sm text-gray-500">{facebookChannels.length} channel(s) configured</p>
+            </div>
+          </div>
+          <Button 
+            size="sm" 
+            className="gap-2 bg-blue-600 hover:bg-blue-700"
+            onClick={() => setChannelDialog({ open: true, type: 'facebook', editing: null })}
+          >
+            <Plus className="w-4 h-4" />
+            Add Facebook
+          </Button>
+        </div>
+        
+        <div className="space-y-3">
+          {facebookChannels.map((channel) => (
+            <ChannelCard 
+              key={channel.id}
+              channel={channel}
+              type="facebook"
+              icon={<Facebook className="w-4 h-4 text-blue-600" />}
+              onEdit={() => setChannelDialog({ open: true, type: 'facebook', editing: channel })}
+              onDelete={() => handleDeleteChannel('facebook', channel.id)}
+              onTest={() => handleTestChannel('facebook', channel.id)}
+            />
+          ))}
+          {facebookChannels.length === 0 && (
+            <p className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg">No Facebook channels configured</p>
+          )}
+        </div>
+      </div>
+
+      {/* Email Channels */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <Mail className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Email</h3>
+              <p className="text-sm text-gray-500">{emailChannels.length} channel(s) configured</p>
+            </div>
+          </div>
+          <Button 
+            size="sm" 
+            className="gap-2 bg-[#eeb224] hover:bg-[#eeb224]/90"
+            onClick={() => setChannelDialog({ open: true, type: 'email', editing: null })}
+          >
+            <Plus className="w-4 h-4" />
+            Add Email
+          </Button>
+        </div>
+        
+        <div className="space-y-3">
+          {emailChannels.map((channel) => (
+            <ChannelCard 
+              key={channel.id}
+              channel={channel}
+              type="email"
+              icon={<Mail className="w-4 h-4 text-orange-600" />}
+              onEdit={() => setChannelDialog({ open: true, type: 'email', editing: channel })}
+              onDelete={() => handleDeleteChannel('email', channel.id)}
+              onTest={() => handleTestChannel('email', channel.id)}
+            />
+          ))}
+          {emailChannels.length === 0 && (
+            <p className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg">No Email channels configured</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   const renderSection = () => {
     switch (activeSection) {
       case 'general':
         return (
           <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Company Information</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name</Label>
-                    <Input
-                      id="companyName"
-                      value={settings.companyName}
-                      onChange={(e) => handleSettingChange('companyName', e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="supportEmail">Support Email</Label>
-                    <Input
-                      id="supportEmail"
-                      type="email"
-                      value={settings.supportEmail}
-                      onChange={(e) => handleSettingChange('supportEmail', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="timezone">Timezone</Label>
-                    <Select
-                      value={settings.timezone}
-                      onValueChange={(value) => handleSettingChange('timezone', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="America/Aruba">America/Aruba (AST)</SelectItem>
-                        <SelectItem value="America/New_York">America/New_York (EST)</SelectItem>
-                        <SelectItem value="Europe/Amsterdam">Europe/Amsterdam (CET)</SelectItem>
-                        <SelectItem value="UTC">UTC</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="language">Default Language</Label>
-                    <Select
-                      value={settings.language}
-                      onValueChange={(value) => handleSettingChange('language', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Spanish</SelectItem>
-                        <SelectItem value="nl">Dutch</SelectItem>
-                        <SelectItem value="pa">Papiamento</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'notifications':
-        return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-gray-900">Email Notifications</p>
-                  <p className="text-sm text-gray-500">Receive notifications via email</p>
-                </div>
-                <Switch
-                  checked={settings.emailNotifications}
-                  onCheckedChange={(checked) => handleSettingChange('emailNotifications', checked)}
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Company Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Company Name</Label>
+                <Input
+                  value={settings.general?.company_name || ''}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    general: { ...settings.general, company_name: e.target.value }
+                  })}
                 />
               </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-gray-900">Push Notifications</p>
-                  <p className="text-sm text-gray-500">Receive browser push notifications</p>
-                </div>
-                <Switch
-                  checked={settings.pushNotifications}
-                  onCheckedChange={(checked) => handleSettingChange('pushNotifications', checked)}
+              <div className="space-y-2">
+                <Label>Support Email</Label>
+                <Input
+                  type="email"
+                  value={settings.general?.support_email || ''}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    general: { ...settings.general, support_email: e.target.value }
+                  })}
                 />
               </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-gray-900">Sound Alerts</p>
-                  <p className="text-sm text-gray-500">Play sound for new messages</p>
-                </div>
-                <Switch
-                  checked={settings.soundAlerts}
-                  onCheckedChange={(checked) => handleSettingChange('soundAlerts', checked)}
-                />
+              <div className="space-y-2">
+                <Label>Timezone</Label>
+                <Select
+                  value={settings.general?.timezone || 'America/Aruba'}
+                  onValueChange={(value) => setSettings({
+                    ...settings,
+                    general: { ...settings.general, timezone: value }
+                  })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="America/Aruba">America/Aruba (AST)</SelectItem>
+                    <SelectItem value="America/New_York">America/New_York (EST)</SelectItem>
+                    <SelectItem value="Europe/Amsterdam">Europe/Amsterdam (CET)</SelectItem>
+                    <SelectItem value="UTC">UTC</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Default Language</Label>
+                <Select
+                  value={settings.general?.language || 'en'}
+                  onValueChange={(value) => setSettings({
+                    ...settings,
+                    general: { ...settings.general, language: value }
+                  })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Spanish</SelectItem>
+                    <SelectItem value="nl">Dutch</SelectItem>
+                    <SelectItem value="pa">Papiamento</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
         );
 
       case 'channels':
+        return renderChannelsSection();
+
+      case 'notifications':
         return (
-          <div className="space-y-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Channel Configuration</h3>
-            <div className="space-y-4">
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Mail className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Email</p>
-                      <p className="text-sm text-gray-500">support@postaruba.com</p>
-                    </div>
-                  </div>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Connected</span>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Notification Preferences</h3>
+            {[
+              { key: 'email_notifications', label: 'Email Notifications', desc: 'Receive notifications via email' },
+              { key: 'push_notifications', label: 'Push Notifications', desc: 'Receive browser push notifications' },
+              { key: 'sound_alerts', label: 'Sound Alerts', desc: 'Play sound for new messages' }
+            ].map((item) => (
+              <div key={item.key} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">{item.label}</p>
+                  <p className="text-sm text-gray-500">{item.desc}</p>
                 </div>
-                <Button variant="outline" size="sm">Configure</Button>
+                <Switch
+                  checked={settings.notifications?.[item.key] ?? true}
+                  onCheckedChange={(checked) => setSettings({
+                    ...settings,
+                    notifications: { ...settings.notifications, [item.key]: checked }
+                  })}
+                />
               </div>
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                      <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">WhatsApp Business</p>
-                      <p className="text-sm text-gray-500">+297 555-0100</p>
-                    </div>
-                  </div>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Connected</span>
-                </div>
-                <Button variant="outline" size="sm">Configure</Button>
-              </div>
-              <div className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">Facebook Messenger</p>
-                      <p className="text-sm text-gray-500">Post Aruba Page</p>
-                    </div>
-                  </div>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Connected</span>
-                </div>
-                <Button variant="outline" size="sm">Configure</Button>
-              </div>
-            </div>
+            ))}
           </div>
         );
 
       case 'security':
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Security Settings</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-gray-900">Two-Factor Authentication</p>
-                  <p className="text-sm text-gray-500">Add an extra layer of security</p>
-                </div>
-                <Switch
-                  checked={settings.twoFactorAuth}
-                  onCheckedChange={(checked) => handleSettingChange('twoFactorAuth', checked)}
-                />
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium text-gray-900">Two-Factor Authentication</p>
+                <p className="text-sm text-gray-500">Add an extra layer of security</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="sessionTimeout">Session Timeout (minutes)</Label>
-                <Select
-                  value={settings.sessionTimeout}
-                  onValueChange={(value) => handleSettingChange('sessionTimeout', value)}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15">15 minutes</SelectItem>
-                    <SelectItem value="30">30 minutes</SelectItem>
-                    <SelectItem value="60">1 hour</SelectItem>
-                    <SelectItem value="120">2 hours</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Switch
+                checked={settings.security?.two_factor_auth ?? false}
+                onCheckedChange={(checked) => setSettings({
+                  ...settings,
+                  security: { ...settings.security, two_factor_auth: checked }
+                })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Session Timeout (minutes)</Label>
+              <Select
+                value={String(settings.security?.session_timeout || 30)}
+                onValueChange={(value) => setSettings({
+                  ...settings,
+                  security: { ...settings.security, session_timeout: parseInt(value) }
+                })}
+              >
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 minutes</SelectItem>
+                  <SelectItem value="30">30 minutes</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                  <SelectItem value="120">2 hours</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         );
@@ -256,21 +458,25 @@ const SettingsView = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Hours</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="startTime">Opening Time</Label>
+                <Label>Opening Time</Label>
                 <Input
-                  id="startTime"
                   type="time"
-                  value={settings.businessHoursStart}
-                  onChange={(e) => handleSettingChange('businessHoursStart', e.target.value)}
+                  value={settings.business_hours?.start_time || '08:00'}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    business_hours: { ...settings.business_hours, start_time: e.target.value }
+                  })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="endTime">Closing Time</Label>
+                <Label>Closing Time</Label>
                 <Input
-                  id="endTime"
                   type="time"
-                  value={settings.businessHoursEnd}
-                  onChange={(e) => handleSettingChange('businessHoursEnd', e.target.value)}
+                  value={settings.business_hours?.end_time || '18:00'}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    business_hours: { ...settings.business_hours, end_time: e.target.value }
+                  })}
                 />
               </div>
             </div>
@@ -281,15 +487,19 @@ const SettingsView = () => {
                   <button
                     key={day}
                     onClick={() => {
-                      const newDays = settings.workDays.includes(day)
-                        ? settings.workDays.filter(d => d !== day)
-                        : [...settings.workDays, day];
-                      handleSettingChange('workDays', newDays);
+                      const days = settings.business_hours?.work_days || [];
+                      const newDays = days.includes(day)
+                        ? days.filter(d => d !== day)
+                        : [...days, day];
+                      setSettings({
+                        ...settings,
+                        business_hours: { ...settings.business_hours, work_days: newDays }
+                      });
                     }}
                     className={cn(
                       "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                      settings.workDays.includes(day)
-                        ? "bg-[#5C0F8B] text-white"
+                      (settings.business_hours?.work_days || []).includes(day)
+                        ? "bg-[#393d8a] text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     )}
                   >
@@ -305,39 +515,11 @@ const SettingsView = () => {
         return (
           <div className="space-y-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Appearance Settings</h3>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Primary Color</Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={settings.primaryColor}
-                    onChange={(e) => handleSettingChange('primaryColor', e.target.value)}
-                    className="w-12 h-12 rounded-lg cursor-pointer border-0"
-                  />
-                  <Input
-                    value={settings.primaryColor}
-                    onChange={(e) => handleSettingChange('primaryColor', e.target.value)}
-                    className="w-32"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Accent Color</Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={settings.accentColor}
-                    onChange={(e) => handleSettingChange('accentColor', e.target.value)}
-                    className="w-12 h-12 rounded-lg cursor-pointer border-0"
-                  />
-                  <Input
-                    value={settings.accentColor}
-                    onChange={(e) => handleSettingChange('accentColor', e.target.value)}
-                    className="w-32"
-                  />
-                </div>
-              </div>
+            <p className="text-gray-500">Brand colors are set to Post Aruba theme: Blue (#393d8a), Yellow (#eeb224), Green (#30a34b)</p>
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-[#393d8a] rounded-lg" title="#393d8a" />
+              <div className="w-16 h-16 bg-[#eeb224] rounded-lg" title="#eeb224" />
+              <div className="w-16 h-16 bg-[#30a34b] rounded-lg" title="#30a34b" />
             </div>
           </div>
         );
@@ -346,6 +528,14 @@ const SettingsView = () => {
         return null;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#393d8a]" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 bg-gray-50 flex">
@@ -364,7 +554,7 @@ const SettingsView = () => {
                 className={cn(
                   "w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors mb-1",
                   activeSection === section.id
-                    ? "bg-[#5C0F8B]/10 text-[#5C0F8B]"
+                    ? "bg-[#393d8a]/10 text-[#393d8a]"
                     : "text-gray-600 hover:bg-gray-50"
                 )}
               >
@@ -388,15 +578,312 @@ const SettingsView = () => {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             {renderSection()}
           </div>
-          <div className="mt-6 flex justify-end">
-            <Button className="gap-2 bg-[#FF8800] hover:bg-[#FF8800]/90">
-              <Save className="w-4 h-4" />
-              Save Changes
-            </Button>
-          </div>
+          {activeSection !== 'channels' && (
+            <div className="mt-6 flex justify-end">
+              <Button 
+                className="gap-2 bg-[#eeb224] hover:bg-[#eeb224]/90"
+                onClick={handleSaveSettings}
+                disabled={saving}
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Save Changes
+              </Button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Channel Dialogs */}
+      <ChannelDialog 
+        open={channelDialog.open}
+        type={channelDialog.type}
+        editing={channelDialog.editing}
+        onClose={() => setChannelDialog({ open: false, type: null, editing: null })}
+        onSave={handleSaveChannel}
+      />
     </div>
+  );
+};
+
+// Channel Card Component
+const ChannelCard = ({ channel, type, icon, onEdit, onDelete, onTest }) => (
+  <div className="p-4 border border-gray-200 rounded-lg bg-white">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+          {icon}
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-gray-900">{channel.name}</p>
+            {channel.is_connected ? (
+              <span className="flex items-center gap-1 text-xs text-green-600">
+                <CheckCircle className="w-3 h-3" /> Connected
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-xs text-gray-500">
+                <XCircle className="w-3 h-3" /> Not connected
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-gray-500">
+            {type === 'whatsapp' && channel.phone_number}
+            {type === 'facebook' && channel.page_name}
+            {type === 'email' && channel.email_address}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onTest}>
+          Test
+        </Button>
+        <Button variant="ghost" size="icon" onClick={onEdit}>
+          <Edit2 className="w-4 h-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600" onClick={onDelete}>
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  </div>
+);
+
+// Channel Dialog Component
+const ChannelDialog = ({ open, type, editing, onClose, onSave }) => {
+  const [data, setData] = useState({});
+  const [showSecrets, setShowSecrets] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (editing) {
+      setData(editing);
+    } else {
+      setData({
+        name: '',
+        phone_number: '',
+        phone_number_id: '',
+        access_token: '',
+        page_name: '',
+        page_id: '',
+        page_access_token: '',
+        app_secret: '',
+        email_address: '',
+        provider: 'smtp',
+        smtp_host: '',
+        smtp_port: 587,
+        smtp_username: '',
+        smtp_password: '',
+        smtp_use_tls: true,
+        api_key: ''
+      });
+    }
+    setShowSecrets({});
+  }, [editing, open]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(type, data);
+    setSaving(false);
+  };
+
+  const toggleSecret = (key) => setShowSecrets({ ...showSecrets, [key]: !showSecrets[key] });
+
+  const renderFields = () => {
+    switch (type) {
+      case 'whatsapp':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label>Channel Name</Label>
+              <Input value={data.name || ''} onChange={(e) => setData({ ...data, name: e.target.value })} placeholder="e.g., Main WhatsApp" />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone Number</Label>
+              <Input value={data.phone_number || ''} onChange={(e) => setData({ ...data, phone_number: e.target.value })} placeholder="+297 555-0100" />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone Number ID (from Meta)</Label>
+              <Input value={data.phone_number_id || ''} onChange={(e) => setData({ ...data, phone_number_id: e.target.value })} placeholder="Enter Phone Number ID" />
+            </div>
+            <div className="space-y-2">
+              <Label>Access Token</Label>
+              <div className="relative">
+                <Input 
+                  type={showSecrets.access_token ? 'text' : 'password'} 
+                  value={data.access_token || ''} 
+                  onChange={(e) => setData({ ...data, access_token: e.target.value })} 
+                  placeholder="Enter Access Token"
+                  className="pr-10"
+                />
+                <button type="button" onClick={() => toggleSecret('access_token')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {showSecrets.access_token ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
+                </button>
+              </div>
+            </div>
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>Webhook URL:</strong> {window.location.origin}/api/webhooks/whatsapp/{data.id || '[channel-id]'}
+              </p>
+              <p className="text-xs text-blue-600 mt-1">Verify Token: {data.webhook_verify_token || 'Will be generated'}</p>
+            </div>
+          </>
+        );
+
+      case 'facebook':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label>Channel Name</Label>
+              <Input value={data.name || ''} onChange={(e) => setData({ ...data, name: e.target.value })} placeholder="e.g., Main Facebook Page" />
+            </div>
+            <div className="space-y-2">
+              <Label>Page Name</Label>
+              <Input value={data.page_name || ''} onChange={(e) => setData({ ...data, page_name: e.target.value })} placeholder="Post Aruba" />
+            </div>
+            <div className="space-y-2">
+              <Label>Page ID</Label>
+              <Input value={data.page_id || ''} onChange={(e) => setData({ ...data, page_id: e.target.value })} placeholder="Enter Page ID" />
+            </div>
+            <div className="space-y-2">
+              <Label>Page Access Token</Label>
+              <div className="relative">
+                <Input 
+                  type={showSecrets.page_access_token ? 'text' : 'password'} 
+                  value={data.page_access_token || ''} 
+                  onChange={(e) => setData({ ...data, page_access_token: e.target.value })} 
+                  className="pr-10"
+                />
+                <button type="button" onClick={() => toggleSecret('page_access_token')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {showSecrets.page_access_token ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>App Secret</Label>
+              <div className="relative">
+                <Input 
+                  type={showSecrets.app_secret ? 'text' : 'password'} 
+                  value={data.app_secret || ''} 
+                  onChange={(e) => setData({ ...data, app_secret: e.target.value })} 
+                  className="pr-10"
+                />
+                <button type="button" onClick={() => toggleSecret('app_secret')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {showSecrets.app_secret ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
+                </button>
+              </div>
+            </div>
+          </>
+        );
+
+      case 'email':
+        return (
+          <>
+            <div className="space-y-2">
+              <Label>Channel Name</Label>
+              <Input value={data.name || ''} onChange={(e) => setData({ ...data, name: e.target.value })} placeholder="e.g., Support Email" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email Address</Label>
+              <Input type="email" value={data.email_address || ''} onChange={(e) => setData({ ...data, email_address: e.target.value })} placeholder="support@postaruba.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Provider</Label>
+              <Select value={data.provider || 'smtp'} onValueChange={(value) => setData({ ...data, provider: value })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="smtp">SMTP</SelectItem>
+                  <SelectItem value="sendgrid">SendGrid</SelectItem>
+                  <SelectItem value="mailgun">Mailgun</SelectItem>
+                  <SelectItem value="aws_ses">AWS SES</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {data.provider === 'smtp' ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>SMTP Host</Label>
+                    <Input value={data.smtp_host || ''} onChange={(e) => setData({ ...data, smtp_host: e.target.value })} placeholder="smtp.gmail.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>SMTP Port</Label>
+                    <Input type="number" value={data.smtp_port || 587} onChange={(e) => setData({ ...data, smtp_port: parseInt(e.target.value) })} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>SMTP Username</Label>
+                  <Input value={data.smtp_username || ''} onChange={(e) => setData({ ...data, smtp_username: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>SMTP Password</Label>
+                  <div className="relative">
+                    <Input 
+                      type={showSecrets.smtp_password ? 'text' : 'password'} 
+                      value={data.smtp_password || ''} 
+                      onChange={(e) => setData({ ...data, smtp_password: e.target.value })} 
+                      className="pr-10"
+                    />
+                    <button type="button" onClick={() => toggleSecret('smtp_password')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {showSecrets.smtp_password ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label>API Key</Label>
+                <div className="relative">
+                  <Input 
+                    type={showSecrets.api_key ? 'text' : 'password'} 
+                    value={data.api_key || ''} 
+                    onChange={(e) => setData({ ...data, api_key: e.target.value })} 
+                    className="pr-10"
+                  />
+                  <button type="button" onClick={() => toggleSecret('api_key')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {showSecrets.api_key ? <EyeOff className="w-4 h-4 text-gray-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const getTitle = () => {
+    const action = editing ? 'Edit' : 'Add';
+    switch (type) {
+      case 'whatsapp': return `${action} WhatsApp Channel`;
+      case 'facebook': return `${action} Facebook Channel`;
+      case 'email': return `${action} Email Channel`;
+      default: return 'Channel';
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{getTitle()}</DialogTitle>
+          <DialogDescription>
+            Configure your {type} channel settings
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          {renderFields()}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving} className="bg-[#393d8a] hover:bg-[#393d8a]/90">
+            {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+            {editing ? 'Update' : 'Create'} Channel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
