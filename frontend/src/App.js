@@ -119,9 +119,6 @@ function AppContent() {
       case 'automation':
         return <AutomationBuilder />;
       
-      case 'flows':
-        return <FlowsView />;
-      
       case 'analytics':
         return <AnalyticsView />;
       
