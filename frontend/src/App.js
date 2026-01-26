@@ -18,7 +18,6 @@ import CustomerPanel from "./components/inbox/CustomerPanel";
 // Other Views
 import AgentsView from "./components/agents/AgentsView";
 import AutomationBuilder from "./components/automation/AutomationBuilder";
-import FlowsView from "./components/flows/FlowsView";
 import AnalyticsView from "./components/analytics/AnalyticsView";
 import SettingsView from "./components/settings/SettingsView";
 
