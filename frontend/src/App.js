@@ -44,12 +44,6 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [channelCounts, setChannelCounts] = useState(channels);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadData();
-    }
-  }, [isAuthenticated, activeChannel]);
-
   const loadData = async () => {
     setLoading(true);
     try {
