@@ -14,7 +14,7 @@ def set_db(database):
     global db
     db = database
 
-@router.get("/", response_model=List[Conversation])
+@router.get("/")
 async def get_conversations(
     channel: Optional[str] = None,
     status: Optional[str] = None,
@@ -35,7 +35,17 @@ async def get_conversations(
         query["assigned_to"] = current_user["sub"]
     
     conversations = await db.conversations.find(query).sort("created_at", -1).to_list(100)
-    return [Conversation(**c) for c in conversations]
+    
+    # Return raw data, handle missing fields
+    result = []
+    for c in conversations:
+        c.pop('_id', None)  # Remove MongoDB _id
+        # Ensure required fields have defaults
+        c.setdefault('channel_id', '')
+        c.setdefault('created_at', datetime.utcnow())
+        result.append(c)
+    
+    return result
 
 @router.get("/{conversation_id}", response_model=Conversation)
 async def get_conversation(conversation_id: str, current_user: dict = Depends(get_current_user)):
