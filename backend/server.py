@@ -284,6 +284,7 @@ api_router.include_router(automation_routes.router)
 api_router.include_router(flow_routes.router)
 api_router.include_router(analytics_routes.router)
 api_router.include_router(settings_routes.router)
+api_router.include_router(automation_flow_routes.router)
 
 # Include the router in the main app
 app.include_router(api_router)
