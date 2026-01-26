@@ -320,8 +320,7 @@ const AutomationBuilder = () => {
                 </div>
                 <Switch
                   checked={automation.active}
-                  onCheckedChange={(e) => {
-                    e.stopPropagation();
+                  onCheckedChange={() => {
                     handleToggle(automation.id);
                   }}
                   onClick={(e) => e.stopPropagation()}
