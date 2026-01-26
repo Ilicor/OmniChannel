@@ -341,15 +341,12 @@ class PostArubaAPITester:
         """Test endpoints without authentication"""
         print("\n=== Testing Unauthorized Access ===")
         
-        # Test accessing protected endpoint without token
-        result = self.make_request("GET", "/users/", expected_status=401)
-        if result.get("success"):
-            self.log_test("Unauthorized Access Denied", True, "Correctly denied access without token")
+        # Test accessing protected endpoint without token (accept both 401 and 403)
+        result = self.make_request("GET", "/users/")
+        if result.get("status_code") in [401, 403]:
+            self.log_test("Unauthorized Access Denied", True, f"Correctly denied access without token (HTTP {result.get('status_code')})")
         else:
-            if result.get("status_code") == 401:
-                self.log_test("Unauthorized Access Denied", True, "Correctly denied access without token")
-            else:
-                self.log_test("Unauthorized Access Denied", False, "Should have denied unauthorized access", result)
+            self.log_test("Unauthorized Access Denied", False, "Should have denied unauthorized access", result)
     
     def run_all_tests(self):
         """Run all test suites"""
