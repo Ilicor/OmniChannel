@@ -231,6 +231,28 @@ class AutoResponseCreate(BaseModel):
     message: str
     active: bool = True
 
+# Legacy Chat Flow Models (for backward compatibility)
+class FlowStep(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: Literal['message', 'input', 'action', 'condition', 'options', 'route']
+    content: str
+
+class ChatFlow(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str = ""
+    active: bool = True
+    steps: List[FlowStep] = []
+    usage_count: int = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_by: str = ""
+
+class ChatFlowCreate(BaseModel):
+    name: str
+    description: str = ""
+    active: bool = True
+    steps: List[FlowStep] = []
+
 # Customer Database for lookups
 class CustomerRecord(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
