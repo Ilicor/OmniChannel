@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "./App.css";
 
 // Context
@@ -44,7 +44,7 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [channelCounts, setChannelCounts] = useState(channels);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [convData, usersData] = await Promise.all([
@@ -70,7 +70,13 @@ function AppContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeChannel]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated, loadData]);
 
   // Show loading while checking auth
   if (authLoading) {
