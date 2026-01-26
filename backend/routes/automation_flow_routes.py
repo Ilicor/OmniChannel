@@ -14,6 +14,83 @@ def set_db(database):
     global db
     db = database
 
+# Get automation templates - MUST be before /{automation_id} route
+@router.get("/templates")
+async def get_automation_templates(current_user: dict = Depends(require_admin)):
+    """Get pre-built automation templates"""
+    return [
+        {
+            "id": "welcome",
+            "name": "Welcome Message",
+            "description": "Send a welcome message to new customers",
+            "trigger": {"type": "first_message", "keywords": [], "match_type": "contains"},
+            "conditions": [],
+            "actions": [
+                {
+                    "type": "send_reply",
+                    "message_template": "Hello! Thank you for contacting Post Aruba support. How can we help you today?"
+                }
+            ]
+        },
+        {
+            "id": "tracking",
+            "name": "Tracking Inquiry",
+            "description": "Auto-respond to tracking questions",
+            "trigger": {"type": "keyword", "keywords": ["track", "tracking", "where is", "status", "package"], "match_type": "contains"},
+            "conditions": [],
+            "actions": [
+                {"type": "lookup_tracking"},
+                {
+                    "type": "send_reply",
+                    "message_template": "I'll help you track your package! Please provide your tracking number if you haven't already."
+                }
+            ]
+        },
+        {
+            "id": "pricing",
+            "name": "Pricing Inquiry",
+            "description": "Auto-respond to pricing questions",
+            "trigger": {"type": "keyword", "keywords": ["price", "cost", "rate", "how much", "pricing"], "match_type": "contains"},
+            "conditions": [],
+            "actions": [
+                {
+                    "type": "send_reply",
+                    "message_template": "Thank you for your interest! Our pricing depends on package size, weight, and destination. An agent will provide you with a detailed quote shortly."
+                },
+                {"type": "add_tag", "tag": "pricing-inquiry"}
+            ]
+        },
+        {
+            "id": "complaint",
+            "name": "Complaint Handler",
+            "description": "Escalate complaints to human agents",
+            "trigger": {"type": "keyword", "keywords": ["complaint", "angry", "terrible", "worst", "refund", "damaged"], "match_type": "contains"},
+            "conditions": [],
+            "actions": [
+                {"type": "set_priority", "priority": "urgent"},
+                {"type": "add_tag", "tag": "complaint"},
+                {
+                    "type": "send_reply",
+                    "message_template": "We sincerely apologize for any inconvenience. Your concern is important to us, and a supervisor will personally assist you shortly."
+                },
+                {"type": "send_to_human"}
+            ]
+        },
+        {
+            "id": "business_hours",
+            "name": "After Hours Message",
+            "description": "Auto-respond outside business hours",
+            "trigger": {"type": "outside_hours", "keywords": [], "match_type": "contains"},
+            "conditions": [],
+            "actions": [
+                {
+                    "type": "send_reply",
+                    "message_template": "Thank you for contacting Post Aruba. Our office is currently closed. Business hours are Monday-Friday, 8AM-6PM (AST). We'll respond as soon as we reopen."
+                }
+            ]
+        }
+    ]
+
 @router.get("/", response_model=List[AutomationFlow])
 async def get_automations(current_user: dict = Depends(require_admin)):
     automations = await db.automations.find().sort("priority", -1).to_list(100)
