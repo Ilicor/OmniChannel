@@ -93,6 +93,18 @@ class PostArubaAPITester:
         result = self.make_request("GET", "/")
         if result.get("success"):
             self.log_test("Root Endpoint", True, "API is running", result.get("data"))
+        
+        # Test get agents only
+        result = self.make_request("GET", "/users/agents", token=self.admin_token)
+        if result.get("success"):
+            agents = result.get("data", [])
+            agent_roles = [a.get("role") for a in agents]
+            if all(role == "agent" for role in agent_roles):
+                self.log_test("Get Agents Only", True, f"Retrieved {len(agents)} agents")
+            else:
+                self.log_test("Get Agents Only", False, f"Non-agent users returned: {agent_roles}")
+        else:
+            self.log_test("Get Agents Only", False, "Failed to get agents", result)
         else:
             self.log_test("Root Endpoint", False, "API not responding", result)
         
