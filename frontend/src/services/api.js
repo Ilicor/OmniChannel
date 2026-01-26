@@ -32,7 +32,7 @@ export const updateConversationStatus = async (conversationId, status) => {
 
 // Users/Agents
 export const getUsers = async () => {
-  const response = await axios.get(`${API}/users`);
+  const response = await axios.get(`${API}/users/`);
   return response.data;
 };
 
