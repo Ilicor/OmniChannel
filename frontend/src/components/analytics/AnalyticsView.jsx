@@ -72,11 +72,25 @@ const AnalyticsView = () => {
     }
   }, [startDate, endDate]);
 
+  const loadSatisfactionTrends = useCallback(async () => {
+    setSatisfactionLoading(true);
+    try {
+      const data = await getSatisfactionTrends(satisfactionPeriod);
+      setSatisfactionData(data);
+    } catch (error) {
+      console.error('Failed to load satisfaction trends:', error);
+    } finally {
+      setSatisfactionLoading(false);
+    }
+  }, [satisfactionPeriod]);
+
   useEffect(() => {
     if (activeTab === 'agents') {
       loadAgentActivity();
+    } else if (activeTab === 'satisfaction') {
+      loadSatisfactionTrends();
     }
-  }, [activeTab, loadAgentActivity]);
+  }, [activeTab, loadAgentActivity, loadSatisfactionTrends]);
 
   if (loading) {
     return (
