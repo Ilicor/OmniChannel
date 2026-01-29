@@ -21,7 +21,7 @@ Build a Freshdesk clone with the following features:
 
 ### Core Features (Complete)
 - [x] JWT-based authentication system
-- [x] Login page with Post Aruba branding
+- [x] Login page with Post Aruba branding and logo
 - [x] Role-based access control (Admin/Agent)
 - [x] Default admin user creation on startup
 - [x] Omnichannel inbox with conversation list
@@ -40,6 +40,30 @@ Build a Freshdesk clone with the following features:
 - [x] Toggle automation active/inactive
 - [x] Edit and delete automations
 - [x] Channel selection for automation rules
+
+### Analytics & Agent Activity (Complete - Jan 2026)
+- [x] Analytics Overview with Total Tickets, Open, Escalated, Resolved Today
+- [x] Weekly ticket trend chart
+- [x] Tickets by channel distribution
+- [x] Customer Satisfaction Score display
+- [x] **Agent Activity Tab** - View agent interactions per day or custom timeframe
+- [x] Date range selector with quick filters (Today, Last 7 Days, Last 30 Days)
+- [x] Agent performance table (Messages Sent, Assigned, Resolved, Open)
+
+### Conversation Management (Complete - Jan 2026)
+- [x] **Mark as Resolved button** - Prominent green button in conversation header
+- [x] Reopen button for resolved conversations
+- [x] **Auto-escalation** - Conversations unresolved >24 hours are auto-escalated
+- [x] **Escalated styling** - Red border/background for escalated conversations in list
+
+### Customer Satisfaction Survey (Complete - Jan 2026)
+- [x] Settings page for survey configuration
+- [x] Enable/disable satisfaction surveys toggle
+- [x] **Auto-send on Resolve** - Automatically send survey when conversation is resolved
+- [x] Customizable survey message
+- [x] Add custom questions (rating, text, yes/no types)
+- [x] Thank you message configuration
+- [x] Preview of survey message
 
 ### Branding (Complete - Jan 2026)
 - [x] Custom Post Aruba logo integrated on login page
@@ -60,6 +84,25 @@ Build a Freshdesk clone with the following features:
   "assigned_tickets": 0,
   "hashed_password": "string",
   "is_active": true
+}
+```
+
+### Conversations
+```json
+{
+  "id": "string",
+  "customer": {...},
+  "channel": "email|whatsapp|facebook|chat",
+  "status": "open|pending|resolved",
+  "priority": "low|medium|high|urgent",
+  "assigned_to": "string",
+  "messages": [...],
+  "escalated": false,
+  "escalated_at": "datetime",
+  "resolved_at": "datetime",
+  "resolved_by": "string",
+  "satisfaction_survey_sent": false,
+  "satisfaction_survey_sent_at": "datetime"
 }
 ```
 
@@ -88,12 +131,42 @@ Build a Freshdesk clone with the following features:
 }
 ```
 
+### Satisfaction Survey Settings
+```json
+{
+  "enabled": false,
+  "auto_send_on_resolve": true,
+  "survey_message": "string",
+  "questions": [{
+    "id": "string",
+    "question": "string",
+    "type": "rating|text|yes_no",
+    "required": true
+  }],
+  "thank_you_message": "string"
+}
+```
+
 ## API Endpoints
 
 ### Authentication
 - `POST /api/auth/login` - User login
 - `POST /api/auth/logout` - User logout
 - `GET /api/auth/me` - Get current user
+
+### Analytics
+- `GET /api/analytics/` - Get analytics overview
+- `GET /api/analytics/agent-activity` - Get agent activity with date range filtering
+
+### Conversations
+- `GET /api/conversations/` - List conversations
+- `GET /api/conversations/{id}` - Get single conversation
+- `PUT /api/conversations/{id}/status` - Update status (triggers satisfaction survey on resolve)
+- `POST /api/conversations/{id}/messages` - Send message
+
+### Settings
+- `GET /api/settings/satisfaction-survey` - Get survey settings
+- `PUT /api/settings/satisfaction-survey` - Update survey settings
 
 ### Automations
 - `GET /api/automations/` - List all automations
@@ -102,11 +175,6 @@ Build a Freshdesk clone with the following features:
 - `PUT /api/automations/{id}` - Update automation
 - `DELETE /api/automations/{id}` - Delete automation
 - `PUT /api/automations/{id}/toggle` - Toggle active state
-
-### Conversations
-- `GET /api/conversations/` - List conversations
-- `GET /api/conversations/{id}` - Get single conversation
-- `POST /api/conversations/{id}/messages` - Send message
 
 ## Known Limitations / MOCKED Features
 - **Channel Integrations:** The channel configuration UI saves credentials to the database but does NOT connect to actual third-party APIs (WhatsApp Business API, Facebook Messenger API, Email SMTP/SendGrid). This is intentional per user request - actual integration to be built later.
@@ -123,8 +191,10 @@ Build a Freshdesk clone with the following features:
 ### P2 - Medium Priority  
 - Full Channel Integration (WhatsApp, Facebook, Email APIs)
 - Real-time message updates (WebSocket or polling)
+- Process and store customer satisfaction survey responses
 
 ### P3 - Low Priority
 - Bulk automation import/export
 - Automation analytics and reporting
 - Mobile responsive improvements
+- Export agent activity reports to CSV/Excel
