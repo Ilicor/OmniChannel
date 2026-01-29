@@ -634,10 +634,10 @@ const ClaimDetailDialog = ({ open, claim, agents, isAdmin, onClose, onUpdate, on
             </div>
             <div className="space-y-2">
               <Label>Assigned To</Label>
-              <Select value={assignedTo} onValueChange={setAssignedTo}>
+              <Select value={assignedTo || "unassigned"} onValueChange={(val) => setAssignedTo(val === "unassigned" ? "" : val)}>
                 <SelectTrigger><SelectValue placeholder="Select agent" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {agents.map(agent => (
                     <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
                   ))}
