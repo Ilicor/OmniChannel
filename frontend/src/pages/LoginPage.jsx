@@ -32,9 +32,11 @@ const LoginPage = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#eeb224] rounded-2xl mb-4 shadow-lg">
-            <Mail className="w-8 h-8 text-white" />
-          </div>
+          <img 
+            src="https://customer-assets.emergentagent.com/job_helpdesk-hub-41/artifacts/0bvfy7jq_1_Post_Aruba_Logo.png" 
+            alt="Post Aruba Logo" 
+            className="w-32 h-32 mx-auto mb-4 object-contain"
+          />
           <h1 className="text-3xl font-bold text-white">Post Aruba</h1>
           <p className="text-white/80 mt-1">Support Center</p>
         </div>

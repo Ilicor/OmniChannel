@@ -50,9 +50,11 @@ const Sidebar = ({
       {/* Logo */}
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#eeb224] rounded-lg flex items-center justify-center">
-            <Mail className="w-5 h-5 text-white" />
-          </div>
+          <img 
+            src="https://customer-assets.emergentagent.com/job_helpdesk-hub-41/artifacts/0bvfy7jq_1_Post_Aruba_Logo.png" 
+            alt="Post Aruba Logo" 
+            className="w-10 h-10 object-contain"
+          />
           <div>
             <h1 className="font-bold text-lg">Post Aruba</h1>
             <p className="text-xs text-white/60">Support Center</p>
