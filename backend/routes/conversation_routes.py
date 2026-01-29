@@ -3,7 +3,7 @@ from models import Conversation, ConversationCreate, Message, MessageCreate
 from auth import get_current_user, require_admin
 from typing import List, Optional
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
@@ -14,13 +14,37 @@ def set_db(database):
     global db
     db = database
 
+async def check_and_escalate_conversations():
+    """Check for conversations older than 24 hours and escalate them"""
+    threshold = datetime.utcnow() - timedelta(hours=24)
+    
+    # Find unresolved conversations older than 24 hours that aren't already escalated
+    await db.conversations.update_many(
+        {
+            "status": {"$in": ["open", "pending"]},
+            "created_at": {"$lt": threshold},
+            "escalated": {"$ne": True}
+        },
+        {
+            "$set": {
+                "escalated": True,
+                "escalated_at": datetime.utcnow(),
+                "priority": "urgent"
+            }
+        }
+    )
+
 @router.get("/")
 async def get_conversations(
     channel: Optional[str] = None,
     status: Optional[str] = None,
     assigned_to: Optional[str] = None,
+    escalated: Optional[bool] = None,
     current_user: dict = Depends(get_current_user)
 ):
+    # Check and escalate old conversations
+    await check_and_escalate_conversations()
+    
     query = {}
     
     if channel and channel != 'all':
@@ -29,6 +53,8 @@ async def get_conversations(
         query["status"] = status
     if assigned_to:
         query["assigned_to"] = assigned_to
+    if escalated is not None:
+        query["escalated"] = escalated
     
     # Agents can only see conversations assigned to them
     if current_user.get("role") == "agent":
@@ -43,6 +69,8 @@ async def get_conversations(
         # Ensure required fields have defaults
         c.setdefault('channel_id', '')
         c.setdefault('created_at', datetime.utcnow())
+        c.setdefault('escalated', False)
+        c.setdefault('escalated_at', None)
         result.append(c)
     
     return result
