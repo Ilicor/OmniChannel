@@ -61,6 +61,15 @@ const SettingsView = () => {
   const [facebookChannels, setFacebookChannels] = useState([]);
   const [emailChannels, setEmailChannels] = useState([]);
   
+  // Satisfaction Survey state
+  const [satisfactionSettings, setSatisfactionSettings] = useState({
+    enabled: false,
+    auto_send_on_resolve: true,
+    survey_message: "Thank you for contacting Post Aruba Support! We'd love to hear your feedback. How would you rate your experience? Please reply with a number from 1-5 (1=Poor, 5=Excellent)",
+    questions: [],
+    thank_you_message: "Thank you for your feedback! We appreciate your time."
+  });
+  
   // Dialog states
   const [channelDialog, setChannelDialog] = useState({ open: false, type: null, editing: null });
   const [showSecrets, setShowSecrets] = useState({});
