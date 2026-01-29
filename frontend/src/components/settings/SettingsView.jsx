@@ -80,16 +80,18 @@ const SettingsView = () => {
 
   const loadData = async () => {
     try {
-      const [settingsData, whatsapp, facebook, email] = await Promise.all([
+      const [settingsData, whatsapp, facebook, email, satisfactionData] = await Promise.all([
         getSettings(),
         getWhatsAppChannels(),
         getFacebookChannels(),
-        getEmailChannels()
+        getEmailChannels(),
+        getSatisfactionSettings()
       ]);
       setSettings(settingsData);
       setWhatsappChannels(whatsapp);
       setFacebookChannels(facebook);
       setEmailChannels(email);
+      setSatisfactionSettings(satisfactionData);
     } catch (error) {
       console.error('Failed to load settings:', error);
     } finally {
