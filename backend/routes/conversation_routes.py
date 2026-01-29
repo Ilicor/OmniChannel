@@ -181,9 +181,37 @@ async def update_conversation_status(
     if current_user.get("role") == "agent" and conversation.get("assigned_to") != current_user["sub"]:
         raise HTTPException(status_code=403, detail="Access denied")
     
+    update_data = {"status": status}
+    
+    # If resolving, add resolved timestamp and clear escalation
+    if status == "resolved":
+        update_data["resolved_at"] = datetime.utcnow()
+        update_data["resolved_by"] = current_user["sub"]
+        update_data["escalated"] = False
+        
+        # Check if satisfaction survey is enabled and auto-send
+        settings = await db.settings.find_one({"id": "app_settings"})
+        if settings and settings.get("satisfaction_survey", {}).get("enabled", False):
+            survey_settings = settings.get("satisfaction_survey", {})
+            if survey_settings.get("auto_send_on_resolve", False):
+                # Create satisfaction survey message
+                survey_message = Message(
+                    sender="bot",
+                    text=survey_settings.get("survey_message", "Thank you for contacting us! How would you rate your experience? Please reply with a number from 1-5 (1=Poor, 5=Excellent)"),
+                    automation_id="satisfaction_survey"
+                )
+                update_data["satisfaction_survey_sent"] = True
+                update_data["satisfaction_survey_sent_at"] = datetime.utcnow()
+                
+                # Add survey message to conversation
+                await db.conversations.update_one(
+                    {"id": conversation_id},
+                    {"$push": {"messages": survey_message.dict()}}
+                )
+    
     await db.conversations.update_one(
         {"id": conversation_id},
-        {"$set": {"status": status}}
+        {"$set": update_data}
     )
     
     return {"message": f"Status updated to {status}"}
