@@ -138,6 +138,15 @@ class Conversation(BaseModel):
     messages: List[Message] = []
     tags: List[str] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    # Escalation fields
+    escalated: bool = False
+    escalated_at: Optional[datetime] = None
+    # Resolution fields
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[str] = None
+    # Satisfaction survey fields
+    satisfaction_survey_sent: bool = False
+    satisfaction_survey_sent_at: Optional[datetime] = None
 
 class ConversationCreate(BaseModel):
     customer: Customer
