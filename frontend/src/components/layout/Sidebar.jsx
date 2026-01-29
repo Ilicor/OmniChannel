@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   Inbox, Mail, MessageCircle, MessageSquare, Facebook, 
   Users, Settings, BarChart3, Zap, LogOut,
-  ChevronDown, Shield
+  ChevronDown, Shield, FileText
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
@@ -27,7 +27,8 @@ const Sidebar = ({
   // Navigation items based on role
   const getNavItems = () => {
     const baseItems = [
-      { id: 'inbox', label: 'Inbox', icon: Inbox }
+      { id: 'inbox', label: 'Inbox', icon: Inbox },
+      { id: 'claims', label: 'Claims', icon: FileText }
     ];
 
     if (isAdmin()) {
