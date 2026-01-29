@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Save, Bell, Lock, Globe, Palette, Clock, Building, ChevronRight,
   Plus, Trash2, Edit2, CheckCircle, XCircle, Loader2, MessageCircle,
-  Facebook, Mail, ExternalLink, Copy, Eye, EyeOff
+  Facebook, Mail, ExternalLink, Copy, Eye, EyeOff, ThumbsUp
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
@@ -29,12 +29,14 @@ import {
   getWhatsAppChannels, createWhatsAppChannel, updateWhatsAppChannel, deleteWhatsAppChannel, testWhatsAppChannel,
   getFacebookChannels, createFacebookChannel, updateFacebookChannel, deleteFacebookChannel, testFacebookChannel,
   getEmailChannels, createEmailChannel, updateEmailChannel, deleteEmailChannel, testEmailChannel,
-  getSettings, updateGeneralSettings, updateNotificationSettings, updateSecuritySettings, updateBusinessHoursSettings
+  getSettings, updateGeneralSettings, updateNotificationSettings, updateSecuritySettings, updateBusinessHoursSettings,
+  getSatisfactionSettings, updateSatisfactionSettings
 } from '../../services/api';
 
 const settingsSections = [
   { id: 'general', label: 'General', icon: Building },
   { id: 'channels', label: 'Channels', icon: Globe },
+  { id: 'satisfaction', label: 'Customer Satisfaction', icon: ThumbsUp },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Lock },
   { id: 'business-hours', label: 'Business Hours', icon: Clock },
