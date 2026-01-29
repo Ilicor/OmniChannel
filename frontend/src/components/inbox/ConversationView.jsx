@@ -99,12 +99,25 @@ const ConversationView = ({ conversation, agents, onUpdate }) => {
 
   return (
     <div className="flex-1 flex flex-col bg-white">
+      {/* Escalation Banner */}
+      {conversation.escalated && conversation.status !== 'resolved' && (
+        <div className="px-4 py-2 bg-red-500 text-white flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          <span className="text-sm font-medium">
+            This conversation has been escalated - unresolved for over 24 hours
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="w-12 h-12 bg-[#393d8a] rounded-full flex items-center justify-center text-white font-semibold">
+              <div className={cn(
+                "w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold",
+                conversation.escalated && conversation.status !== 'resolved' ? "bg-red-500" : "bg-[#393d8a]"
+              )}>
                 {conversation.customer?.avatar || conversation.customer?.name?.charAt(0)}
               </div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-sm border border-gray-100">
@@ -118,6 +131,26 @@ const ConversationView = ({ conversation, agents, onUpdate }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Prominent Resolve Button */}
+            {conversation.status !== 'resolved' && (
+              <Button 
+                onClick={() => handleStatusChange('resolved')}
+                className="bg-[#30a34b] hover:bg-[#30a34b]/90 text-white gap-2"
+                data-testid="resolve-conversation-btn"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Mark as Resolved
+              </Button>
+            )}
+            {conversation.status === 'resolved' && (
+              <Button 
+                onClick={() => handleStatusChange('open')}
+                variant="outline"
+                className="gap-2"
+              >
+                Reopen
+              </Button>
+            )}
             <Button variant="outline" size="icon" className="rounded-full">
               <Phone className="w-4 h-4" />
             </Button>
