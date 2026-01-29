@@ -3,13 +3,13 @@ import {
   TrendingUp, Users, Clock, ThumbsUp,
   Mail, MessageCircle, Facebook, MessageSquare,
   ArrowUpRight, ArrowDownRight, Loader2, Calendar,
-  AlertTriangle, CheckCircle, BarChart3
+  AlertTriangle, CheckCircle, BarChart3, Star
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { getAnalytics, getAgentActivity } from '../../services/api';
+import { getAnalytics, getAgentActivity, getSatisfactionTrends } from '../../services/api';
 
 const channelIcons = {
   Email: Mail,
@@ -28,9 +28,12 @@ const channelColors = {
 const AnalyticsView = () => {
   const [statistics, setStatistics] = useState(null);
   const [agentActivity, setAgentActivity] = useState(null);
+  const [satisfactionData, setSatisfactionData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [satisfactionLoading, setSatisfactionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  const [satisfactionPeriod, setSatisfactionPeriod] = useState('30d');
   
   // Date range for agent activity
   const [startDate, setStartDate] = useState(() => {
