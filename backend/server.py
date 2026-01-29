@@ -11,7 +11,7 @@ from auth import get_password_hash
 # Import routes
 from routes import auth_routes, user_routes, channel_routes, conversation_routes
 from routes import automation_routes, flow_routes, analytics_routes, settings_routes
-from routes import automation_flow_routes
+from routes import automation_flow_routes, claims_routes
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
