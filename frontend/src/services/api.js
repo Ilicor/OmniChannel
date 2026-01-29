@@ -244,9 +244,27 @@ export const getAnalytics = async () => {
   return response.data;
 };
 
+export const getAgentActivity = async (startDate, endDate) => {
+  const params = {};
+  if (startDate) params.start_date = startDate;
+  if (endDate) params.end_date = endDate;
+  const response = await axios.get(`${API}/analytics/agent-activity`, { params });
+  return response.data;
+};
+
 // Settings
 export const getSettings = async () => {
   const response = await axios.get(`${API}/settings/`);
+  return response.data;
+};
+
+export const getSatisfactionSettings = async () => {
+  const response = await axios.get(`${API}/settings/satisfaction-survey`);
+  return response.data;
+};
+
+export const updateSatisfactionSettings = async (data) => {
+  const response = await axios.put(`${API}/settings/satisfaction-survey`, data);
   return response.data;
 };
 
