@@ -179,6 +179,17 @@ const AnalyticsView = () => {
             >
               Agent Activity
             </button>
+            <button
+              onClick={() => setActiveTab('satisfaction')}
+              className={cn(
+                "px-4 py-2 rounded-md text-sm font-medium transition-all",
+                activeTab === 'satisfaction' 
+                  ? "bg-[#393d8a] text-white" 
+                  : "text-gray-600 hover:bg-gray-100"
+              )}
+            >
+              Satisfaction Trends
+            </button>
           </div>
         </div>
 
