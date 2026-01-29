@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, MessageCircle, MessageSquare, Facebook, Clock } from 'lucide-react';
+import { Mail, MessageCircle, MessageSquare, Facebook, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
 
