@@ -64,13 +64,15 @@ const ConversationList = ({
           <div className="divide-y divide-gray-100">
             {conversations.map((conv) => {
               const ChannelIcon = channelIcons[conv.channel] || Mail;
+              const isEscalated = conv.escalated && conv.status !== 'resolved';
               return (
                 <button
                   key={conv.id}
                   onClick={() => setSelectedConversation(conv)}
                   className={cn(
                     "w-full p-4 text-left transition-all duration-200 hover:bg-gray-50",
-                    selectedConversation?.id === conv.id && "bg-[#393d8a]/5 border-l-4 border-[#393d8a]"
+                    selectedConversation?.id === conv.id && "bg-[#393d8a]/5 border-l-4 border-[#393d8a]",
+                    isEscalated && selectedConversation?.id !== conv.id && "bg-red-50 border-l-4 border-red-500"
                   )}
                 >
                   <div className="flex items-start gap-3">
@@ -78,7 +80,7 @@ const ConversationList = ({
                     <div className="relative">
                       <div className={cn(
                         "w-11 h-11 rounded-full flex items-center justify-center text-white font-semibold text-sm",
-                        conv.unread ? "bg-[#393d8a]" : "bg-gray-400"
+                        isEscalated ? "bg-red-500" : conv.unread ? "bg-[#393d8a]" : "bg-gray-400"
                       )}>
                         {conv.customer?.avatar || conv.customer?.name?.charAt(0) || '?'}
                       </div>
@@ -90,12 +92,17 @@ const ConversationList = ({
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <span className={cn(
-                          "font-medium text-gray-900 truncate",
-                          conv.unread && "font-semibold"
-                        )}>
-                          {conv.customer?.name || 'Unknown'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn(
+                            "font-medium text-gray-900 truncate",
+                            conv.unread && "font-semibold"
+                          )}>
+                            {conv.customer?.name || 'Unknown'}
+                          </span>
+                          {isEscalated && (
+                            <AlertTriangle className="w-4 h-4 text-red-500" />
+                          )}
+                        </div>
                         <div className="flex items-center gap-1 text-gray-400">
                           <Clock className="w-3 h-3" />
                           <span className="text-xs">{conv.timestamp}</span>
@@ -113,9 +120,9 @@ const ConversationList = ({
                         <div className="flex items-center gap-2">
                           <span className={cn(
                             "px-2 py-0.5 rounded-full text-xs font-medium capitalize",
-                            statusColors[conv.status]
+                            isEscalated ? "bg-red-100 text-red-700" : statusColors[conv.status]
                           )}>
-                            {conv.status}
+                            {isEscalated ? 'Escalated' : conv.status}
                           </span>
                           <div className="flex items-center gap-1">
                             <div className={cn("w-2 h-2 rounded-full", priorityColors[conv.priority])} />
