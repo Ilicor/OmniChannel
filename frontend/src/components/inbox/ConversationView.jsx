@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Send, Paperclip, Smile, MoreVertical, Phone, Video,
   User, Clock, Tag, ChevronDown, Star, Archive,
-  MessageCircle, Facebook, MessageSquare, Mail
+  MessageCircle, Facebook, MessageSquare, Mail, CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
