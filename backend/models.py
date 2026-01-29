@@ -317,3 +317,68 @@ class AppSettings(BaseModel):
     notifications: NotificationSettings = NotificationSettings()
     security: SecuritySettings = SecuritySettings()
     business_hours: BusinessHoursSettings = BusinessHoursSettings()
+
+
+# ============== CLAIMS MODELS ==============
+
+class Claim(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    # Customer info
+    customer_name: str
+    customer_email: str = ""
+    customer_phone: str = ""
+    # Claim details
+    claim_type: Literal['damaged_package', 'lost_package', 'delayed_delivery', 'wrong_delivery', 'billing_issue', 'service_complaint', 'other'] = 'other'
+    tracking_number: str = ""
+    description: str
+    # Related conversation
+    conversation_id: str = ""
+    # Resolution
+    status: Literal['open', 'investigating', 'pending_customer', 'resolved', 'rejected'] = 'open'
+    resolution_notes: str = ""
+    resolved_at: Optional[datetime] = None
+    # Assignment
+    assigned_to: str = ""
+    assigned_to_name: str = ""
+    # Priority
+    priority: Literal['urgent', 'high', 'medium', 'low'] = 'medium'
+    # Metadata
+    created_by: str = ""
+    created_by_name: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ClaimCreate(BaseModel):
+    customer_name: str
+    customer_email: str = ""
+    customer_phone: str = ""
+    claim_type: Literal['damaged_package', 'lost_package', 'delayed_delivery', 'wrong_delivery', 'billing_issue', 'service_complaint', 'other'] = 'other'
+    tracking_number: str = ""
+    description: str
+    conversation_id: str = ""
+    priority: Literal['urgent', 'high', 'medium', 'low'] = 'medium'
+
+class ClaimUpdate(BaseModel):
+    status: Optional[Literal['open', 'investigating', 'pending_customer', 'resolved', 'rejected']] = None
+    resolution_notes: Optional[str] = None
+    assigned_to: Optional[str] = None
+    priority: Optional[Literal['urgent', 'high', 'medium', 'low']] = None
+
+# ============== SATISFACTION RESPONSE MODELS ==============
+
+class SatisfactionResponse(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    conversation_id: str
+    customer_name: str = ""
+    customer_email: str = ""
+    rating: int  # 1-5
+    feedback: str = ""
+    agent_id: str = ""
+    agent_name: str = ""
+    channel: str = ""
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class SatisfactionResponseCreate(BaseModel):
+    conversation_id: str
+    rating: int
+    feedback: str = ""
