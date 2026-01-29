@@ -542,7 +542,205 @@ const AnalyticsView = () => {
               </div>
             )}
           </div>
-        )}
+        ) : activeTab === 'satisfaction' ? (
+          /* Satisfaction Trends Tab */
+          <div className="space-y-6">
+            {/* Period Selector */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Customer Satisfaction Trends</h3>
+                  <p className="text-sm text-gray-500 mt-1">Track CSAT scores and feedback over time</p>
+                </div>
+                <div className="flex gap-2">
+                  {['7d', '30d', '90d'].map((period) => (
+                    <Button
+                      key={period}
+                      variant={satisfactionPeriod === period ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSatisfactionPeriod(period)}
+                      className={satisfactionPeriod === period ? 'bg-[#393d8a]' : ''}
+                    >
+                      {period === '7d' ? 'Last 7 Days' : period === '30d' ? 'Last 30 Days' : 'Last 90 Days'}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {satisfactionLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[#393d8a]" />
+              </div>
+            ) : satisfactionData ? (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 bg-[#393d8a] rounded-lg flex items-center justify-center">
+                        <ThumbsUp className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="text-gray-600 font-medium">CSAT Score</span>
+                    </div>
+                    <p className="text-3xl font-bold text-gray-900">{satisfactionData.csat_score}%</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 bg-[#eeb224] rounded-lg flex items-center justify-center">
+                        <Star className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="text-gray-600 font-medium">Avg Rating</span>
+                    </div>
+                    <p className="text-3xl font-bold text-gray-900">{satisfactionData.average_rating}/5</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 bg-[#30a34b] rounded-lg flex items-center justify-center">
+                        <MessageCircle className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="text-gray-600 font-medium">Responses</span>
+                    </div>
+                    <p className="text-3xl font-bold text-gray-900">{satisfactionData.total_responses}</p>
+                  </div>
+                  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="text-gray-600 font-medium">Satisfied (4-5)</span>
+                    </div>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {(satisfactionData.ratings_distribution?.[4] || 0) + (satisfactionData.ratings_distribution?.[5] || 0)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-6">
+                  {/* Rating Distribution */}
+                  <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                    <h3 className="font-semibold text-gray-900 mb-4">Rating Distribution</h3>
+                    <div className="space-y-3">
+                      {[5, 4, 3, 2, 1].map((rating) => {
+                        const count = satisfactionData.ratings_distribution?.[rating] || 0;
+                        const total = satisfactionData.total_responses || 1;
+                        const percentage = Math.round((count / total) * 100);
+                        return (
+                          <div key={rating} className="flex items-center gap-3">
+                            <div className="flex items-center gap-1 w-12">
+                              <Star className={cn("w-4 h-4", rating >= 4 ? "text-[#eeb224] fill-[#eeb224]" : "text-gray-300")} />
+                              <span className="text-sm font-medium">{rating}</span>
+                            </div>
+                            <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                              <div 
+                                className={cn(
+                                  "h-full rounded-full transition-all",
+                                  rating >= 4 ? "bg-green-500" : rating === 3 ? "bg-yellow-500" : "bg-red-500"
+                                )}
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-sm text-gray-600 w-12 text-right">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Trend Chart */}
+                  <div className="col-span-2 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                    <h3 className="font-semibold text-gray-900 mb-4">Satisfaction Trend</h3>
+                    {satisfactionData.trend_data && satisfactionData.trend_data.length > 0 ? (
+                      <div className="h-48 flex items-end gap-1">
+                        {satisfactionData.trend_data.slice(-14).map((day, index) => {
+                          const height = day.avg > 0 ? (day.avg / 5) * 100 : 0;
+                          return (
+                            <div key={index} className="flex-1 flex flex-col items-center gap-1">
+                              <div className="w-full flex flex-col items-center">
+                                {day.count > 0 && (
+                                  <span className="text-xs text-gray-500 mb-1">{day.avg.toFixed(1)}</span>
+                                )}
+                                <div 
+                                  className={cn(
+                                    "w-full rounded-t transition-all",
+                                    day.avg >= 4 ? "bg-green-500" : day.avg >= 3 ? "bg-yellow-500" : day.avg > 0 ? "bg-red-500" : "bg-gray-200"
+                                  )}
+                                  style={{ height: `${Math.max(height, 4)}%` }}
+                                  title={`${day.date}: ${day.avg.toFixed(1)} avg (${day.count} responses)`}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-400 transform -rotate-45 origin-top-left mt-2">
+                                {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="h-48 flex items-center justify-center text-gray-500">
+                        No trend data available yet
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Agent Performance */}
+                {satisfactionData.agent_performance && satisfactionData.agent_performance.length > 0 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-4 border-b border-gray-100">
+                      <h3 className="font-semibold text-gray-900">Agent Satisfaction Rankings</h3>
+                    </div>
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Rank</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Agent</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Reviews</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Avg Rating</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {satisfactionData.agent_performance.map((agent, index) => (
+                          <tr key={agent.agent_id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <span className={cn(
+                                "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                                index === 0 ? "bg-[#eeb224] text-white" : 
+                                index === 1 ? "bg-gray-300 text-gray-700" :
+                                index === 2 ? "bg-orange-300 text-orange-800" :
+                                "bg-gray-100 text-gray-600"
+                              )}>
+                                {index + 1}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="font-medium text-gray-900">{agent.agent_name}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="text-gray-600">{agent.reviews}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Star className="w-4 h-4 text-[#eeb224] fill-[#eeb224]" />
+                                <span className="font-semibold text-gray-900">{agent.avg_rating}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+                <ThumbsUp className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-gray-500">No satisfaction data available yet</p>
+                <p className="text-sm text-gray-400 mt-1">Satisfaction responses will appear here once customers submit feedback</p>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );
