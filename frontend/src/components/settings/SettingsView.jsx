@@ -115,6 +115,9 @@ const SettingsView = () => {
         case 'business-hours':
           await updateBusinessHoursSettings(settings.business_hours);
           break;
+        case 'satisfaction':
+          await updateSatisfactionSettings(satisfactionSettings);
+          break;
       }
       alert('Settings saved successfully');
     } catch (error) {
