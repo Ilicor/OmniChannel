@@ -287,3 +287,40 @@ export const updateBusinessHoursSettings = async (data) => {
   const response = await axios.put(`${API}/settings/business-hours`, data);
   return response.data;
 };
+
+// Claims
+export const getClaims = async (filters = {}) => {
+  const response = await axios.get(`${API}/claims/`, { params: filters });
+  return response.data;
+};
+
+export const getClaimsStats = async () => {
+  const response = await axios.get(`${API}/claims/stats`);
+  return response.data;
+};
+
+export const getClaim = async (claimId) => {
+  const response = await axios.get(`${API}/claims/${claimId}`);
+  return response.data;
+};
+
+export const createClaim = async (data) => {
+  const response = await axios.post(`${API}/claims/`, data);
+  return response.data;
+};
+
+export const updateClaim = async (claimId, data) => {
+  const response = await axios.put(`${API}/claims/${claimId}`, data);
+  return response.data;
+};
+
+export const deleteClaim = async (claimId) => {
+  const response = await axios.delete(`${API}/claims/${claimId}`);
+  return response.data;
+};
+
+// Satisfaction Trends
+export const getSatisfactionTrends = async (period = '30d') => {
+  const response = await axios.get(`${API}/analytics/satisfaction-trends`, { params: { period } });
+  return response.data;
+};
