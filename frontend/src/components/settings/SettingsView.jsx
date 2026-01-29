@@ -404,6 +404,192 @@ const SettingsView = () => {
       case 'channels':
         return renderChannelsSection();
 
+      case 'satisfaction':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Customer Satisfaction Survey</h3>
+              <p className="text-sm text-gray-500">Configure automated satisfaction surveys sent after resolving conversations</p>
+            </div>
+            
+            {/* Enable Survey */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium text-gray-900">Enable Satisfaction Surveys</p>
+                <p className="text-sm text-gray-500">Collect feedback from customers after interactions</p>
+              </div>
+              <Switch
+                checked={satisfactionSettings.enabled}
+                onCheckedChange={(checked) => setSatisfactionSettings({
+                  ...satisfactionSettings,
+                  enabled: checked
+                })}
+              />
+            </div>
+
+            {satisfactionSettings.enabled && (
+              <>
+                {/* Auto-send on Resolve */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900">Auto-send on Resolve</p>
+                    <p className="text-sm text-gray-500">Automatically send survey when a conversation is marked as resolved</p>
+                  </div>
+                  <Switch
+                    checked={satisfactionSettings.auto_send_on_resolve}
+                    onCheckedChange={(checked) => setSatisfactionSettings({
+                      ...satisfactionSettings,
+                      auto_send_on_resolve: checked
+                    })}
+                  />
+                </div>
+
+                {/* Survey Message */}
+                <div className="space-y-2">
+                  <Label>Survey Message</Label>
+                  <Textarea
+                    value={satisfactionSettings.survey_message}
+                    onChange={(e) => setSatisfactionSettings({
+                      ...satisfactionSettings,
+                      survey_message: e.target.value
+                    })}
+                    placeholder="Enter the message to send to customers..."
+                    rows={4}
+                    className="resize-none"
+                  />
+                  <p className="text-xs text-gray-500">This message will be sent to customers when asking for feedback</p>
+                </div>
+
+                {/* Custom Questions */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Custom Questions (Optional)</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newQuestion = {
+                          id: `q_${Date.now()}`,
+                          question: '',
+                          type: 'rating',
+                          required: true
+                        };
+                        setSatisfactionSettings({
+                          ...satisfactionSettings,
+                          questions: [...(satisfactionSettings.questions || []), newQuestion]
+                        });
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Question
+                    </Button>
+                  </div>
+                  
+                  {(satisfactionSettings.questions || []).map((q, index) => (
+                    <div key={q.id} className="p-4 border border-gray-200 rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-500">Question {index + 1}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-600"
+                          onClick={() => {
+                            setSatisfactionSettings({
+                              ...satisfactionSettings,
+                              questions: satisfactionSettings.questions.filter((_, i) => i !== index)
+                            });
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <Input
+                        value={q.question}
+                        onChange={(e) => {
+                          const updated = [...satisfactionSettings.questions];
+                          updated[index] = { ...updated[index], question: e.target.value };
+                          setSatisfactionSettings({ ...satisfactionSettings, questions: updated });
+                        }}
+                        placeholder="Enter your question..."
+                      />
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <Label className="text-xs">Response Type</Label>
+                          <Select
+                            value={q.type}
+                            onValueChange={(value) => {
+                              const updated = [...satisfactionSettings.questions];
+                              updated[index] = { ...updated[index], type: value };
+                              setSatisfactionSettings({ ...satisfactionSettings, questions: updated });
+                            }}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="rating">Rating (1-5)</SelectItem>
+                              <SelectItem value="text">Text Response</SelectItem>
+                              <SelectItem value="yes_no">Yes/No</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center gap-2 pt-5">
+                          <Switch
+                            checked={q.required}
+                            onCheckedChange={(checked) => {
+                              const updated = [...satisfactionSettings.questions];
+                              updated[index] = { ...updated[index], required: checked };
+                              setSatisfactionSettings({ ...satisfactionSettings, questions: updated });
+                            }}
+                          />
+                          <Label className="text-xs">Required</Label>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {(!satisfactionSettings.questions || satisfactionSettings.questions.length === 0) && (
+                    <p className="text-sm text-gray-500 italic p-4 bg-gray-50 rounded-lg">
+                      No custom questions added. The default rating question will be used.
+                    </p>
+                  )}
+                </div>
+
+                {/* Thank You Message */}
+                <div className="space-y-2">
+                  <Label>Thank You Message</Label>
+                  <Textarea
+                    value={satisfactionSettings.thank_you_message}
+                    onChange={(e) => setSatisfactionSettings({
+                      ...satisfactionSettings,
+                      thank_you_message: e.target.value
+                    })}
+                    placeholder="Thank you message after survey completion..."
+                    rows={2}
+                    className="resize-none"
+                  />
+                  <p className="text-xs text-gray-500">Sent after the customer completes the survey</p>
+                </div>
+
+                {/* Preview */}
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Preview</h4>
+                  <div className="bg-[#393d8a]/5 rounded-lg p-4 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="w-8 h-8 bg-[#393d8a] rounded-full flex items-center justify-center text-white text-xs">
+                        PA
+                      </div>
+                      <div className="flex-1 bg-white rounded-lg p-3 shadow-sm">
+                        <p className="text-sm text-gray-700">{satisfactionSettings.survey_message}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        );
+
       case 'notifications':
         return (
           <div className="space-y-4">
