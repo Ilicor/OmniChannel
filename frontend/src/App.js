@@ -120,6 +120,9 @@ function AppContent() {
       case 'automation':
         return <AutomationBuilder />;
       
+      case 'claims':
+        return <ClaimsView />;
+      
       case 'analytics':
         return <AnalyticsView />;
       
