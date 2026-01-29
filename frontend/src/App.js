@@ -20,6 +20,7 @@ import AgentsView from "./components/agents/AgentsView";
 import AutomationBuilder from "./components/automation/AutomationBuilder";
 import AnalyticsView from "./components/analytics/AnalyticsView";
 import SettingsView from "./components/settings/SettingsView";
+import ClaimsView from "./components/claims/ClaimsView";
 
 // API
 import { getConversations, getUsers } from "./services/api";
