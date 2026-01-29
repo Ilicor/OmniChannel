@@ -328,7 +328,7 @@ const AnalyticsView = () => {
               </div>
             </div>
           </>
-        ) : (
+        ) : activeTab === 'agents' ? (
           /* Agent Activity Tab */
           <div className="space-y-6">
             {/* Date Range Selector */}
