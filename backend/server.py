@@ -38,6 +38,7 @@ flow_routes.set_db(db)
 analytics_routes.set_db(db)
 settings_routes.set_db(db)
 automation_flow_routes.set_db(db)
+claims_routes.set_db(db)
 
 async def create_default_admin():
     """Create default admin user if not exists"""
